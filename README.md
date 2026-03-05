@@ -74,7 +74,7 @@ All responses use a consistent envelope:
 
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 15 (App Router) |
+| Framework | Next.js 16 (App Router) |
 | Styling | Tailwind CSS v4 |
 | Database | SQLite via `better-sqlite3` |
 | PDF generation | `pdfkit` |

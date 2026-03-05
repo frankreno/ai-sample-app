@@ -1,0 +1,17 @@
+---
+description: React component and page conventions — client directive, styling, state patterns
+globs: components/**/*.tsx, app/**/*.tsx
+alwaysApply: false
+---
+
+# React Component Conventions
+
+- All components use `"use client"` directive (this is a client-rendered SPA)
+- Define props via a `Props` interface — use named exports, not default exports
+- Parent page (`app/page.tsx`) owns all state; components receive data and callbacks via props
+- Styling: Tailwind CSS v4 utility classes only. Color palette: stone (neutrals) + orange (accent)
+- Severity/status colors: import `SEVERITY_STYLES` and `STATUS_STYLES` maps from `@/types`
+- Visual consistency: `rounded-lg`/`rounded-xl` corners, `shadow-sm` shadows, `border-stone-200` borders
+- Enums and constants: import from `@/types` (frontend) — keep in sync with `lib/api.ts` (API)
+
+See `components/CLAUDE.md` for detailed patterns.

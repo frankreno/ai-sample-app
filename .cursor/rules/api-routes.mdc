@@ -1,0 +1,17 @@
+---
+description: Conventions for Next.js API route handlers — response format, validation, SQL queries
+globs: app/api/**/*.ts
+alwaysApply: false
+---
+
+# API Route Conventions
+
+- Use `ok(data)` and `err(message, status)` from `@/lib/api` for all responses — never build JSON manually
+- Import `db` from `@/lib/db` — never create a new database connection
+- Validate enums using `CATEGORIES`, `SEVERITIES`, `STATUSES` from `@/lib/api` with `.includes()`
+- Always use parameterized SQL queries (`?` placeholders) — never interpolate user input
+- After INSERT or UPDATE, re-SELECT and return the full row via `ok()`
+- For dynamic route params in Next.js 16: `{ params }: { params: Promise<{ id: string }> }` — await it
+- Pagination: default `page=1`, `limit=50`, cap limit at 200
+
+See `app/api/CLAUDE.md` for detailed patterns and examples.
