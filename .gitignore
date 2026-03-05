@@ -40,9 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 db/sitecheck.db
+db/*.db-shm
+db/*.db-wal
 public/uploads/*
 !public/uploads/.gitkeep
 public/reports/*
 !public/reports/.gitkeep
-wal
-shm
