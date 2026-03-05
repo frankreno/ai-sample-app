@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,10 +40,19 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# SQLite
 db/sitecheck.db
 db/*.db-shm
 db/*.db-wal
+db/*.db-journal
+
+# runtime uploads and generated reports
 public/uploads/*
 !public/uploads/.gitkeep
 public/reports/*
 !public/reports/.gitkeep
+
+# Cursor (keep project rules, ignore user-specific config)
+.cursor/*
+!.cursor/rules/

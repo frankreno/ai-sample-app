@@ -1,0 +1,17 @@
+---
+description: SQLite schema and database conventions — types, constraints, seed data
+globs: db/**
+alwaysApply: false
+---
+
+# Database Conventions
+
+- Primary keys are TEXT — UUIDs for projects, sequential `DEF-XXX` for deficiencies
+- Enum fields must have CHECK constraints listing every valid value
+- JSON arrays stored as TEXT with DEFAULT `'[]'` (e.g., `photo_paths`)
+- Timestamps are TEXT in ISO format using `DEFAULT (datetime('now'))`
+- Foreign keys use REFERENCES and are enforced via `PRAGMA foreign_keys = ON`
+- When modifying schema: update `schema.sql`, update `setup.ts` seed data, re-run `npm run setup`
+- Seed data should be realistic construction industry content spanning all enum values
+
+See `db/CLAUDE.md` for full conventions.
