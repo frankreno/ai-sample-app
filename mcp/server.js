@@ -143,7 +143,7 @@ registerAppTool(
   server,
   "show_projects",
   {
-    description: "Show an interactive project dashboard so the user can browse and select a project. Call this when the user says 'show projects', 'which projects', 'select a project', etc.",
+    description: "Show an interactive project dashboard so the user can browse and select a project. Call this when the user says 'show projects', 'which projects', 'select a project', etc. Do NOT summarize the project list in text — the widget displays it.",
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     _meta: { ui: { resourceUri: WIDGET_URIS.projectDashboard } },
   },
@@ -161,7 +161,12 @@ registerAppTool(
 
     const projects = json.data;
     return {
-      structuredContent: { projects },
+      structuredContent: {
+        projects,
+        ui_rendered: true,
+        suppress_assistant_summary: true,
+        assistant_message: "Here are your projects — tap one to view details.",
+      },
       content: [],
     };
   }
@@ -254,7 +259,7 @@ registerAppTool(
   server,
   "log_deficiency",
   {
-    description: "Extract deficiency details from the user's description and show a pre-filled form for review before saving. Call this when the user describes a site issue or deficiency.",
+    description: "Extract deficiency details from the user's description and show a pre-filled form for review before saving. Call this when the user describes a site issue or deficiency. Do NOT list the prefilled fields in text — the widget shows the form.",
     inputSchema: {
       project_id: z.string().describe("ID of the active project"),
       title: z.string().describe("Short description of the deficiency, extracted from user's words"),
@@ -315,6 +320,9 @@ registerAppTool(
         severities: SEVERITIES,
         // Project name for display in the widget header
         projectName: project.name,
+        ui_rendered: true,
+        suppress_assistant_summary: true,
+        assistant_message: "Here's the pre-filled form — review and submit when ready.",
       },
       content: [],
     };
@@ -328,7 +336,7 @@ registerAppTool(
   server,
   "get_deficiency_list",
   {
-    description: "List deficiencies for the active project. Optionally filter by severity, status, or trade. Shows results in a table widget.",
+    description: "List deficiencies for the active project. Optionally filter by severity, status, or trade. Shows results in a table widget. Do NOT enumerate the deficiencies in text — the widget displays the table.",
     inputSchema: {
       project_id: z.string().describe("ID of the active project"),
       severity: z
@@ -376,6 +384,9 @@ registerAppTool(
         items,
         total,
         filters: { severity: args.severity, status: args.status, trade: args.trade },
+        ui_rendered: true,
+        suppress_assistant_summary: true,
+        assistant_message: `Showing ${total} deficiencie${total !== 1 ? "s" : ""}${active ? ` filtered by ${active}` : ""}.`,
       },
       content: [],
     };
@@ -390,7 +401,7 @@ registerAppTool(
   server,
   "set_severity",
   {
-    description: "Show a severity picker for a deficiency so the user can confirm or change it. Call this after log_deficiency or when the user mentions severity.",
+    description: "Show a severity picker for a deficiency so the user can confirm or change it. Call this after log_deficiency or when the user mentions severity. Do NOT list severity options in text — the widget shows the picker.",
     inputSchema: {
       deficiency_id: z
         .string()
@@ -427,6 +438,9 @@ registerAppTool(
         selectedSeverity: args.severity ?? deficiency.severity,
         severities:       SEVERITIES,
         apiBase:          API_BASE,
+        ui_rendered: true,
+        suppress_assistant_summary: true,
+        assistant_message: "Select a severity level to confirm.",
       },
       content: [],
     };
@@ -485,7 +499,7 @@ registerAppTool(
   server,
   "upload_photo",
   {
-    description: "Show a photo upload widget so the user can attach an image to a deficiency. Call this after log_deficiency when the user has a photo to attach.",
+    description: "Show a photo upload widget so the user can attach an image to a deficiency. Call this after log_deficiency when the user has a photo to attach. Do NOT describe the upload UI in text — the widget handles it.",
     inputSchema: {
       deficiency_id: z
         .string()
@@ -517,6 +531,9 @@ registerAppTool(
         deficiencyTitle: deficiency.title,
         existingCount,
         apiBase: API_BASE,
+        ui_rendered: true,
+        suppress_assistant_summary: true,
+        assistant_message: "Upload a photo to attach it to this deficiency.",
       },
       content: [],
     };
@@ -530,7 +547,7 @@ registerAppTool(
   server,
   "get_summary_stats",
   {
-    description: "Show a summary dashboard of deficiency counts by severity and status for the active project.",
+    description: "Show a summary dashboard of deficiency counts by severity and status for the active project. Do NOT restate the counts in text — the widget displays the chart.",
     inputSchema: {
       project_id: z.string().describe("ID of the active project"),
     },
@@ -556,7 +573,14 @@ registerAppTool(
       .join(", ");
 
     return {
-      structuredContent: { total, by_severity, by_status },
+      structuredContent: {
+        total,
+        by_severity,
+        by_status,
+        ui_rendered: true,
+        suppress_assistant_summary: true,
+        assistant_message: `Here's the project summary — ${total} deficiencie${total !== 1 ? "s" : ""} total.`,
+      },
       content: [],
     };
   }
@@ -570,7 +594,7 @@ registerAppTool(
   server,
   "generate_report",
   {
-    description: "Generate a PDF inspection report for the active project and provide a download link.",
+    description: "Generate a PDF inspection report for the active project and provide a download link. Do NOT repeat the download URL in text — the widget provides the button.",
     inputSchema: {
       project_id: z.string().describe("ID of the project to generate the report for"),
     },
@@ -598,6 +622,9 @@ registerAppTool(
         // Widget builds the full clickable URL: apiBase + download_url
         apiBase: API_BASE,
         deficiency_count,
+        ui_rendered: true,
+        suppress_assistant_summary: true,
+        assistant_message: `Report ready — ${deficiency_count} deficiencie${deficiency_count !== 1 ? "s" : ""} included. Click to download.`,
       },
       content: [],
     };
