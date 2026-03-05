@@ -28,6 +28,10 @@ export default function Home() {
   const [filterSeverity, setFilterSeverity] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterTrade, setFilterTrade] = useState("");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
+  const [sortBy, setSortBy] = useState("created_at");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const [showModal, setShowModal] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -51,6 +55,10 @@ export default function Home() {
     if (filterSeverity) params.set("severity", filterSeverity);
     if (filterStatus) params.set("status", filterStatus);
     if (filterTrade) params.set("trade", filterTrade);
+    if (filterDateFrom) params.set("date_from", filterDateFrom);
+    if (filterDateTo) params.set("date_to", filterDateTo);
+    params.set("sort_by", sortBy);
+    params.set("sort_dir", sortDir);
 
     fetch(`/api/deficiencies?${params}`)
       .then((r) => r.json())
@@ -59,7 +67,7 @@ export default function Home() {
     fetch(`/api/deficiencies/stats?project_id=${selectedProject.id}`)
       .then((r) => r.json())
       .then((j) => { if (j.success) setStats(j.data); });
-  }, [selectedProject, filterSeverity, filterStatus, filterTrade]);
+  }, [selectedProject, filterSeverity, filterStatus, filterTrade, filterDateFrom, filterDateTo, sortBy, sortDir]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -90,6 +98,26 @@ export default function Home() {
   }
 
   const trades = [...new Set(deficiencies.map((d) => d.trade).filter(Boolean))].sort();
+
+  const SORT_COLS: { label: string; col: string }[] = [
+    { label: "ID", col: "id" },
+    { label: "Title", col: "title" },
+    { label: "Severity", col: "severity" },
+    { label: "Status", col: "status" },
+    { label: "Category", col: "category" },
+    { label: "Location", col: "location" },
+    { label: "Trade", col: "trade" },
+    { label: "Date", col: "created_at" },
+  ];
+
+  function handleSort(col: string) {
+    if (sortBy === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(col);
+      setSortDir("asc");
+    }
+  }
 
   return (
     <div className="min-h-screen bg-stone-50">
@@ -216,8 +244,23 @@ export default function Home() {
             <option value="">All Trades</option>
             {trades.map((t) => <option key={t}>{t}</option>)}
           </select>
-          {(filterSeverity || filterStatus || filterTrade) && (
-            <button onClick={() => { setFilterSeverity(""); setFilterStatus(""); setFilterTrade(""); }}
+          <input
+            type="date"
+            value={filterDateFrom}
+            onChange={(e) => setFilterDateFrom(e.target.value)}
+            title="Created after"
+            className="border border-stone-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-stone-400 text-stone-600"
+          />
+          <span className="text-stone-400 text-xs">to</span>
+          <input
+            type="date"
+            value={filterDateTo}
+            onChange={(e) => setFilterDateTo(e.target.value)}
+            title="Created before"
+            className="border border-stone-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-stone-400 text-stone-600"
+          />
+          {(filterSeverity || filterStatus || filterTrade || filterDateFrom || filterDateTo) && (
+            <button onClick={() => { setFilterSeverity(""); setFilterStatus(""); setFilterTrade(""); setFilterDateFrom(""); setFilterDateTo(""); }}
               className="text-xs text-stone-400 hover:text-red-600 underline underline-offset-2">
               Clear filters
             </button>
@@ -232,7 +275,7 @@ export default function Home() {
               <div className="text-4xl mb-3">📋</div>
               <div className="font-medium text-stone-600">No deficiencies found</div>
               <div className="text-sm mt-1">
-                {filterSeverity || filterStatus || filterTrade
+                {filterSeverity || filterStatus || filterTrade || filterDateFrom || filterDateTo
                   ? "Try adjusting your filters"
                   : "Click \"+ New Deficiency\" to log the first one"}
               </div>
@@ -242,9 +285,16 @@ export default function Home() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-stone-50 border-b border-stone-200">
-                    {["ID", "Title", "Severity", "Status", "Category", "Location", "Trade", "Date"].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-stone-400 uppercase tracking-wider whitespace-nowrap">
-                        {h}
+                    {SORT_COLS.map(({ label, col }) => (
+                      <th
+                        key={col}
+                        onClick={() => handleSort(col)}
+                        className="px-4 py-3 text-left text-[11px] font-semibold text-stone-400 uppercase tracking-wider whitespace-nowrap cursor-pointer select-none hover:text-stone-600 transition-colors"
+                      >
+                        {label}
+                        <span className="ml-1 text-[10px]">
+                          {sortBy === col ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
+                        </span>
                       </th>
                     ))}
                   </tr>

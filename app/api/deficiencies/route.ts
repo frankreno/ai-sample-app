@@ -32,6 +32,23 @@ export async function GET(req: NextRequest) {
     params.push(trade);
   }
 
+  const date_from = searchParams.get("date_from");
+  if (date_from) {
+    conditions.push("created_at >= ?");
+    params.push(date_from);
+  }
+
+  const date_to = searchParams.get("date_to");
+  if (date_to) {
+    conditions.push("created_at < ?");
+    params.push(date_to + "T23:59:59.999Z");
+  }
+
+  const ALLOWED_SORT_COLS = ["id", "title", "severity", "status", "category", "location", "trade", "created_at"];
+  const sortByRaw = searchParams.get("sort_by") ?? "created_at";
+  const sort_by = ALLOWED_SORT_COLS.includes(sortByRaw) ? sortByRaw : "created_at";
+  const sort_dir = searchParams.get("sort_dir") === "asc" ? "ASC" : "DESC";
+
   const page = parseInt(searchParams.get("page") ?? "1", 10);
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "50", 10), 200);
   const offset = (page - 1) * limit;
@@ -39,7 +56,7 @@ export async function GET(req: NextRequest) {
   const where = conditions.join(" AND ");
   const rows = db
     .prepare(
-      `SELECT * FROM deficiencies WHERE ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`
+      `SELECT * FROM deficiencies WHERE ${where} ORDER BY ${sort_by} ${sort_dir} LIMIT ? OFFSET ?`
     )
     .all(...params, limit, offset);
 
