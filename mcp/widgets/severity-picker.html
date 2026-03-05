@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Set Severity — SiteCheck</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #1e1e1e;
+      --surface: #2a2a2a;
+      --border: #3a3a3a;
+      --text: #e8e8e8;
+      --text-muted: #888;
+      --radius: 10px;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f5f5f5;
+        --surface: #fff;
+        --border: #d0d0d0;
+        --text: #111;
+        --text-muted: #666;
+      }
+    }
+
+    body {
+      font-family: var(--font);
+      font-size: 14px;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+    }
+
+    h2 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .subtitle { font-size: 12px; color: var(--text-muted); margin-bottom: 20px; }
+    .def-id { font-family: monospace; color: var(--text-muted); }
+
+    /* Four severity tiles */
+    .picker {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .sev-tile {
+      padding: 14px 12px;
+      border-radius: var(--radius);
+      border: 2px solid transparent;
+      cursor: pointer;
+      text-align: center;
+      background: var(--surface);
+      transition: all 0.15s;
+    }
+
+    .sev-tile .label {
+      font-size: 13px;
+      font-weight: 700;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .sev-tile .desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* Color themes per severity */
+    .tile-Critical {
+      border-color: #ff4d4d44;
+    }
+    .tile-Critical .label { color: #ff4d4d; }
+    .tile-Critical:hover, .tile-Critical.selected {
+      background: #ff4d4d18;
+      border-color: #ff4d4d;
+    }
+
+    .tile-Major {
+      border-color: #ff944444;
+    }
+    .tile-Major .label { color: #ff9444; }
+    .tile-Major:hover, .tile-Major.selected {
+      background: #ff944418;
+      border-color: #ff9444;
+    }
+
+    .tile-Minor {
+      border-color: #ffd04444;
+    }
+    .tile-Minor .label { color: #b89000; }
+    .tile-Minor:hover, .tile-Minor.selected {
+      background: #ffd04418;
+      border-color: #ffd044;
+    }
+
+    .tile-Observation {
+      border-color: #4a9eff44;
+    }
+    .tile-Observation .label { color: #4a9eff; }
+    .tile-Observation:hover, .tile-Observation.selected {
+      background: #4a9eff18;
+      border-color: #4a9eff;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    button {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: var(--font);
+      transition: opacity 0.15s;
+    }
+
+    .btn-primary {
+      background: #4a9eff;
+      color: #fff;
+    }
+    .btn-primary:disabled { opacity: 0.4; cursor: default; }
+    .btn-primary:not(:disabled):hover { background: #3a8eef; }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { border-color: var(--text-muted); }
+
+    .status-bar {
+      margin-top: 10px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      display: none;
+    }
+    .status-bar.error   { background: #ff4d4d22; color: #ff4d4d; display: block; }
+    .status-bar.success { background: #4caf5022; color: #4caf50; display: block; }
+  </style>
+</head>
+<body>
+
+<h2>Set Severity</h2>
+<p class="subtitle" id="subtitle">Select severity for <span class="def-id" id="def-id">…</span></p>
+
+<div class="picker" id="picker">
+  <!-- Tiles injected by JS so severity list comes from structured content -->
+</div>
+
+<div class="actions">
+  <button type="button" class="btn-secondary" id="cancel-btn">Cancel</button>
+  <button type="button" class="btn-primary" id="save-btn" disabled>Set Severity</button>
+</div>
+
+<div class="status-bar" id="status-bar"></div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let apiBase = "http://localhost:3000";
+let deficiencyId = "";
+let selectedSeverity = "";
+
+const SEVERITY_DESCS = {
+  Critical:    "Immediate action required — safety or structural risk",
+  Major:       "Significant impact — resolve before project milestone",
+  Minor:       "Low impact — address in normal workflow",
+  Observation: "Noted for record — no corrective action required",
+};
+
+// ── Bridge ────────────────────────────────────────────────────────────────────
+function postToParent(payload) { window.parent.postMessage(payload, "*"); }
+function sendResult(data)      { postToParent({ type: "mcp:result", result: data }); }
+function sendCancel()          { postToParent({ type: "mcp:cancel" }); }
+
+// ── Initialize ────────────────────────────────────────────────────────────────
+function init(data) {
+  apiBase        = data.apiBase ?? apiBase;
+  deficiencyId   = data.deficiency_id ?? "";
+  selectedSeverity = data.selectedSeverity ?? "";
+
+  document.getElementById("def-id").textContent =
+    `${deficiencyId}${data.deficiencyTitle ? ": " + data.deficiencyTitle : ""}`;
+
+  const picker = document.getElementById("picker");
+  picker.innerHTML = "";
+
+  const severities = data.severities ?? ["Critical", "Major", "Minor", "Observation"];
+  for (const sev of severities) {
+    const tile = document.createElement("div");
+    tile.className = `sev-tile tile-${sev}`;
+    tile.innerHTML = `<span class="label">${sev}</span><span class="desc">${SEVERITY_DESCS[sev] ?? ""}</span>`;
+    tile.addEventListener("click", () => selectSeverity(sev));
+    picker.appendChild(tile);
+  }
+
+  if (selectedSeverity) selectSeverity(selectedSeverity);
+}
+
+function selectSeverity(value) {
+  selectedSeverity = value;
+  document.querySelectorAll(".sev-tile").forEach((t) => {
+    t.classList.toggle("selected", t.querySelector(".label")?.textContent === value);
+  });
+  document.getElementById("save-btn").disabled = false;
+}
+
+// ── Save ──────────────────────────────────────────────────────────────────────
+document.getElementById("save-btn").addEventListener("click", async () => {
+  if (!selectedSeverity || !deficiencyId) return;
+
+  const saveBtn = document.getElementById("save-btn");
+  saveBtn.disabled = true;
+  saveBtn.textContent = "Saving…";
+
+  try {
+    const res = await fetch(`${apiBase}/api/deficiencies/${encodeURIComponent(deficiencyId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ severity: selectedSeverity }),
+    });
+    const json = await res.json();
+
+    if (!json.success) {
+      showError(`Save failed: ${json.error}`);
+      return;
+    }
+
+    showSuccess(`${json.data.id} severity set to ${json.data.severity}`);
+    sendResult({ deficiency: json.data });
+  } catch (err) {
+    showError(`Network error: ${err.message}`);
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = "Set Severity";
+  }
+});
+
+document.getElementById("cancel-btn").addEventListener("click", sendCancel);
+
+function showError(msg) {
+  const bar = document.getElementById("status-bar");
+  bar.className = "status-bar error";
+  bar.textContent = msg;
+}
+
+function showSuccess(msg) {
+  const bar = document.getElementById("status-bar");
+  bar.className = "status-bar success";
+  bar.textContent = msg;
+}
+
+// ── Apps SDK bridge ───────────────────────────────────────────────────────────
+function rpcSend(method, params, id) {
+  const msg = { jsonrpc: "2.0", method, params: params ?? {} };
+  if (id !== undefined) msg.id = id;
+  window.parent.postMessage(msg, "*");
+}
+rpcSend("ui/initialize", {
+  appInfo: { name: "SiteCheck", version: "1.0.0" },
+  appCapabilities: {},
+  protocolVersion: "2026-01-26",
+}, "init");
+window.addEventListener("message", (event) => {
+  if (event.source !== window.parent) return;
+  const msg = event.data;
+  if (!msg || msg.jsonrpc !== "2.0") return;
+  if (msg.id === "init") rpcSend("ui/notifications/initialized");
+  if (msg.method === "ui/notifications/tool-result") init(msg.params?.structuredContent);
+});
+
+// ── Dev mode ──────────────────────────────────────────────────────────────────
+const p = new URLSearchParams(location.search);
+if (p.has("deficiency_id")) {
+  init({
+    deficiency_id:   p.get("deficiency_id"),
+    deficiencyTitle: p.get("deficiencyTitle") ?? "Test deficiency",
+    selectedSeverity: p.get("severity") ?? "Major",
+    severities: ["Critical", "Major", "Minor", "Observation"],
+    apiBase: p.get("apiBase") ?? "http://localhost:3000",
+  });
+}
+</script>
+</body>
+</html>

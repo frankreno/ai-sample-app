@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deficiencies — SiteCheck</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #1e1e1e;
+      --surface: #2a2a2a;
+      --border: #3a3a3a;
+      --text: #e8e8e8;
+      --text-muted: #888;
+      --header-bg: #252525;
+      --row-hover: #303030;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f5f5f5;
+        --surface: #fff;
+        --border: #d0d0d0;
+        --text: #111;
+        --text-muted: #666;
+        --header-bg: #f0f0f0;
+        --row-hover: #f8f8f8;
+      }
+    }
+
+    body {
+      font-family: var(--font);
+      font-size: 13px;
+      background: var(--bg);
+      color: var(--text);
+      padding: 12px;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .count { font-size: 12px; color: var(--text-muted); }
+
+    .filter-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    .pill {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 99px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      background: var(--header-bg);
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th:hover { color: var(--text); }
+    th .sort-icon { margin-left: 4px; opacity: 0.4; }
+    th.sorted .sort-icon { opacity: 1; }
+
+    td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--row-hover); }
+
+    .id { font-family: monospace; font-size: 12px; color: var(--text-muted); }
+    .title { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .location { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); }
+
+    /* Severity badges */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .sev-Critical    { background: #ff4d4d22; color: #ff4d4d; border: 1px solid #ff4d4d55; }
+    .sev-Major       { background: #ff944422; color: #ff9444; border: 1px solid #ff944455; }
+    .sev-Minor       { background: #ffd04422; color: #b89000; border: 1px solid #ffd04455; }
+    .sev-Observation { background: #4a9eff22; color: #4a9eff; border: 1px solid #4a9eff55; }
+
+    .sta-Open        { background: #ff4d4d22; color: #ff4d4d; border: 1px solid #ff4d4d55; }
+    .sta-In-Progress { background: #ff944422; color: #ff9444; border: 1px solid #ff944455; }
+    .sta-Resolved    { background: #4caf5022; color: #4caf50; border: 1px solid #4caf5055; }
+    .sta-Closed      { background: #88888822; color: #888;    border: 1px solid #88888855; }
+
+    .empty {
+      text-align: center;
+      padding: 32px;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="count" id="count">Loading…</span>
+  <div class="filter-pills" id="filter-pills"></div>
+</div>
+
+<div class="table-wrap">
+  <table id="table">
+    <thead>
+      <tr>
+        <th data-col="id">ID <span class="sort-icon">↕</span></th>
+        <th data-col="title">Title <span class="sort-icon">↕</span></th>
+        <th data-col="severity">Severity <span class="sort-icon">↕</span></th>
+        <th data-col="status">Status <span class="sort-icon">↕</span></th>
+        <th data-col="location">Location <span class="sort-icon">↕</span></th>
+        <th data-col="trade">Trade <span class="sort-icon">↕</span></th>
+        <th data-col="created_at">Date <span class="sort-icon">↕</span></th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let allItems = [];
+let sortCol = "created_at";
+let sortAsc = false;
+
+const SEVERITY_ORDER = { Critical: 0, Major: 1, Minor: 2, Observation: 3 };
+const STATUS_ORDER   = { Open: 0, "In Progress": 1, Resolved: 2, Closed: 3 };
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render() {
+  const sorted = [...allItems].sort((a, b) => {
+    let va = a[sortCol] ?? "";
+    let vb = b[sortCol] ?? "";
+
+    if (sortCol === "severity") { va = SEVERITY_ORDER[va] ?? 99; vb = SEVERITY_ORDER[vb] ?? 99; }
+    if (sortCol === "status")   { va = STATUS_ORDER[va]   ?? 99; vb = STATUS_ORDER[vb]   ?? 99; }
+
+    if (va < vb) return sortAsc ? -1 : 1;
+    if (va > vb) return sortAsc ?  1 : -1;
+    return 0;
+  });
+
+  const tbody = document.getElementById("tbody");
+  tbody.innerHTML = "";
+
+  if (sorted.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">No deficiencies found.</td></tr>`;
+    return;
+  }
+
+  for (const item of sorted) {
+    const date = item.created_at
+      ? new Date(item.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" })
+      : "—";
+
+    const sevClass = `sev-${item.severity}`;
+    const staClass = `sta-${(item.status ?? "").replace(/\s+/g, "-")}`;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="id">${esc(item.id)}</td>
+      <td class="title" title="${esc(item.title)}">${esc(item.title)}</td>
+      <td><span class="badge ${sevClass}">${esc(item.severity)}</span></td>
+      <td><span class="badge ${staClass}">${esc(item.status)}</span></td>
+      <td class="location" title="${esc(item.location ?? "")}">${esc(item.location || "—")}</td>
+      <td>${esc(item.trade || "—")}</td>
+      <td>${date}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  // Update header sort indicators
+  document.querySelectorAll("th").forEach((th) => {
+    th.classList.toggle("sorted", th.dataset.col === sortCol);
+    const icon = th.querySelector(".sort-icon");
+    if (icon && th.dataset.col === sortCol) {
+      icon.textContent = sortAsc ? "↑" : "↓";
+    } else if (icon) {
+      icon.textContent = "↕";
+    }
+  });
+}
+
+function esc(str) {
+  return String(str ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// ── Sort on header click ──────────────────────────────────────────────────────
+document.querySelectorAll("th[data-col]").forEach((th) => {
+  th.addEventListener("click", () => {
+    const col = th.dataset.col;
+    if (sortCol === col) {
+      sortAsc = !sortAsc;
+    } else {
+      sortCol = col;
+      sortAsc = col === "id" || col === "title";
+    }
+    render();
+  });
+});
+
+// ── Initialize from data ──────────────────────────────────────────────────────
+function init(data) {
+  allItems = data.items ?? [];
+
+  document.getElementById("count").textContent =
+    `${data.total ?? allItems.length} deficiency(ies)`;
+
+  const pillsEl = document.getElementById("filter-pills");
+  pillsEl.innerHTML = "";
+  const { severity, status, trade } = data.filters ?? {};
+  for (const [label, val] of [["Severity", severity], ["Status", status], ["Trade", trade]]) {
+    if (val) {
+      const pill = document.createElement("span");
+      pill.className = "pill";
+      pill.textContent = `${label}: ${val}`;
+      pillsEl.appendChild(pill);
+    }
+  }
+
+  render();
+}
+
+// ── Apps SDK bridge ───────────────────────────────────────────────────────────
+function rpcSend(method, params, id) {
+  const msg = { jsonrpc: "2.0", method, params: params ?? {} };
+  if (id !== undefined) msg.id = id;
+  window.parent.postMessage(msg, "*");
+}
+rpcSend("ui/initialize", {
+  appInfo: { name: "SiteCheck", version: "1.0.0" },
+  appCapabilities: {},
+  protocolVersion: "2026-01-26",
+}, "init");
+window.addEventListener("message", (event) => {
+  if (event.source !== window.parent) return;
+  const msg = event.data;
+  if (!msg || msg.jsonrpc !== "2.0") return;
+  if (msg.id === "init") rpcSend("ui/notifications/initialized");
+  if (msg.method === "ui/notifications/tool-result") init(msg.params?.structuredContent);
+});
+
+// ── Dev mode ──────────────────────────────────────────────────────────────────
+// Open with ?dev=1 to see the table with mock data
+const p = new URLSearchParams(location.search);
+if (p.has("dev")) {
+  init({
+    items: [
+      { id: "DEF-001", title: "Crack in east foundation wall", severity: "Critical", status: "Open", location: "Grid B4", trade: "Concrete", created_at: new Date().toISOString() },
+      { id: "DEF-002", title: "Exposed wiring in panel room", severity: "Major", status: "In Progress", location: "Level 2", trade: "Electrical", created_at: new Date().toISOString() },
+      { id: "DEF-003", title: "Scuffed drywall finish", severity: "Minor", status: "Resolved", location: "Unit 4B", trade: "Finish", created_at: new Date().toISOString() },
+    ],
+    total: 3,
+    filters: { severity: null, status: null, trade: null },
+  });
+}
+</script>
+</body>
+</html>

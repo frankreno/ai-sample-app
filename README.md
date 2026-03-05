@@ -2,14 +2,25 @@
 
 A construction site inspection tracker built as a two-phase prototype demonstrating how SaaS products connect to AI conversational platforms.
 
-**Phase 1 (this branch):** Standalone Next.js web app with a clean REST API backed by SQLite.
-**Phase 2 (planned):** ChatGPT integration via OpenAI Apps SDK / MCP server, calling the same REST API.
+**Phase 1:** Standalone Next.js web app with a REST API backed by SQLite.
+**Phase 2:** ChatGPT integration via OpenAI Apps SDK + MCP server, calling the same REST API.
 
 The analogy is OpenTable — users can log inspections via the web app *or* through ChatGPT. Same database, two interfaces.
 
 ---
 
-## Quick Start
+## Architecture
+
+```
+[React Frontend]  →  [REST API]  →  [SQLite DB]
+[MCP Server]      →  [REST API]  →  [SQLite DB]
+```
+
+The MCP server is a thin wrapper — all business logic lives in the REST API. A deficiency created via ChatGPT appears immediately in the web app, and vice versa.
+
+---
+
+## Quick Start — Phase 1 (Web App)
 
 ```bash
 npm install
@@ -17,13 +28,51 @@ npm run setup   # creates SQLite DB + seeds 3 projects, 8 deficiencies
 npm run dev     # http://localhost:3000
 ```
 
-No Docker, no external services, no API keys required for Phase 1.
+No Docker, no external services, no API keys required.
 
 ---
 
-## What's in Phase 1
+## Quick Start — Phase 2 (ChatGPT Integration)
 
-### Web App
+Requires the web app running on port 3000 and ngrok installed.
+
+```bash
+# Terminal 1 — Next.js REST API
+npm run dev
+
+# Terminal 2 — MCP server
+npm run mcp     # http://localhost:8787
+
+# Terminal 3 — expose MCP server publicly
+ngrok http 8787
+```
+
+### Register in ChatGPT
+
+1. Go to **chatgpt.com** → profile → **Settings → Apps**
+2. Click **Add app** → paste `<ngrok-url>/mcp`
+3. Complete the OAuth flow (auto-approves in dev)
+4. In a new chat, click **"+"** near the input to add SiteCheck to the conversation
+
+### Test prompts
+
+| Prompt | Widget rendered |
+|---|---|
+| "Show me my SiteCheck projects" | Project dashboard |
+| "Show deficiencies for Maple Street" | Deficiency table |
+| "Show only Critical deficiencies for Maple Street" | Deficiency table (filtered) |
+| "Show stats for Maple Street" | Stats dashboard |
+| "Log a cracked beam at Grid B4 on Maple Street" | Deficiency form (pre-filled) |
+| "Change the severity of DEF-001" | Severity picker |
+| "Attach a photo to DEF-001" | Photo upload |
+| "Generate a report for Maple Street" | Report download |
+| "Mark DEF-001 as resolved" | Text only (no widget) |
+
+> **Tip:** ngrok free tunnels expire after a few hours. When the URL changes, remove and re-add the app in ChatGPT settings. A free static domain is available at dashboard.ngrok.com.
+
+---
+
+## What's in the Web App
 
 - **Project selector** — switch between projects from the header
 - **Summary dashboard** — total count, counts by severity (clickable to filter), counts by status
@@ -33,16 +82,9 @@ No Docker, no external services, no API keys required for Phase 1.
 - **Inline status cycling** — click any status badge to advance it (Open → In Progress → Resolved → Closed)
 - **Report generation** — generates a PDF inspection report, available for immediate download
 
-### Severity colors (consistent everywhere)
+---
 
-| Severity | Color |
-|---|---|
-| Critical | Red |
-| Major | Orange |
-| Minor | Yellow |
-| Observation | Blue |
-
-### REST API
+## REST API
 
 All responses use a consistent envelope:
 ```json
@@ -56,11 +98,11 @@ All responses use a consistent envelope:
 | `/api/deficiencies` | POST | Create a deficiency |
 | `/api/deficiencies/[id]` | GET | Get a single deficiency |
 | `/api/deficiencies/[id]` | PATCH | Update fields (severity, status, title, etc.) |
-| `/api/deficiencies/[id]/photos` | POST | Upload a photo (multipart/form-data), attach to deficiency |
+| `/api/deficiencies/[id]/photos` | POST | Upload a photo (multipart/form-data) |
 | `/api/deficiencies/stats` | GET | Counts grouped by severity and status for a `project_id` |
-| `/api/reports/generate` | POST | Generate a PDF report for a `project_id`, returns download URL |
+| `/api/reports/generate` | POST | Generate a PDF report, returns download URL |
 
-#### Enums
+### Enums
 
 | Field | Values |
 |---|---|
@@ -70,15 +112,21 @@ All responses use a consistent envelope:
 
 ---
 
-## Tech Stack
+## MCP Tools
 
-| Layer | Technology |
-|---|---|
-| Framework | Next.js 16 (App Router) |
-| Styling | Tailwind CSS v4 |
-| Database | SQLite via `better-sqlite3` |
-| PDF generation | `pdfkit` |
-| Language | TypeScript |
+The MCP server exposes these tools to ChatGPT:
+
+| Tool | Widget | Description |
+|---|---|---|
+| `set_project` | — | Silent project lookup (resolves name → ID) |
+| `show_projects` | project-dashboard | Browse all projects |
+| `log_deficiency` | deficiency-form | Pre-filled form to log a new deficiency |
+| `get_deficiency_list` | deficiency-table | List/filter deficiencies |
+| `get_summary_stats` | stats-dashboard | Counts by severity and status |
+| `set_severity` | severity-picker | Pick/confirm severity for a deficiency |
+| `update_status` | — | Directly patch status (no UI needed) |
+| `upload_photo` | photo-upload | Attach a photo to a deficiency |
+| `generate_report` | report-download | Generate PDF + download link |
 
 ---
 
@@ -106,11 +154,35 @@ All responses use a consistent envelope:
 ├── lib/
 │   ├── api.ts                    # Response helpers + enum constants
 │   └── db.ts                     # SQLite singleton
+├── mcp/
+│   ├── server.js                 # MCP server (thin wrapper over REST API)
+│   └── widgets/                  # Embedded UI HTML files
+│       ├── project-dashboard.html
+│       ├── deficiency-form.html
+│       ├── deficiency-table.html
+│       ├── severity-picker.html
+│       ├── photo-upload.html
+│       ├── stats-dashboard.html
+│       └── report-download.html
+├── middleware.ts                 # CORS headers for API routes
 ├── public/
-│   ├── uploads/                  # Photo uploads stored here
-│   └── reports/                  # Generated PDFs stored here
-└── types/index.ts                # Shared TypeScript types
+│   ├── uploads/                  # Photo uploads
+│   └── reports/                  # Generated PDFs
+└── types/index.ts
 ```
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| Styling | Tailwind CSS v4 |
+| Database | SQLite via `better-sqlite3` |
+| PDF generation | `pdfkit` |
+| MCP server | `@modelcontextprotocol/sdk` + `@modelcontextprotocol/ext-apps` |
+| Language | TypeScript |
 
 ---
 
@@ -134,9 +206,9 @@ All responses use a consistent envelope:
 | `project_id` | TEXT | Foreign key → projects |
 | `title` | TEXT | |
 | `description` | TEXT | |
-| `category` | TEXT | Enum — see above |
-| `severity` | TEXT | Enum — see above |
-| `status` | TEXT | Enum — see above, default `Open` |
+| `category` | TEXT | Enum |
+| `severity` | TEXT | Enum |
+| `status` | TEXT | Enum, default `Open` |
 | `location` | TEXT | Grid ref or description |
 | `trade` | TEXT | Responsible trade |
 | `photo_paths` | TEXT | JSON array of `/uploads/...` paths |
@@ -145,26 +217,12 @@ All responses use a consistent envelope:
 
 ---
 
-## API Design Notes (for Phase 2 / MCP integration)
-
-The REST API is intentionally designed for external consumers, not just the frontend:
-
-- **Consistent envelope** — every response has `success`, `data`, `error`
-- **Enum validation** — invalid values return a `400` with a clear message listing accepted values
-- **Filter parameters** on list endpoints — the MCP server can query by severity, status, trade without fetching everything
-- **Pagination** — `?page=N&limit=N` on `/api/deficiencies` (max 200 per page)
-- **Idempotency-friendly** — PATCH accepts partial updates; creating duplicate deficiencies generates a new sequential ID
-
-In Phase 2, an MCP server will wrap these endpoints as ChatGPT tools — each tool handler is a thin HTTP call to this API with no duplicated business logic.
-
----
-
 ## Seed Data
 
 `npm run setup` seeds:
 
-- **Oakwood Tower** — 22-story mixed-use residential tower, Denver CO (4 deficiencies)
-- **Riverside Industrial Park** — warehouse/logistics facility, Aurora CO (2 deficiencies)
-- **Maple Street Renovation** — historic seismic retrofit, Boulder CO (2 deficiencies)
+- **Maple Street Renovation** — historic seismic retrofit, Boulder CO
+- **Oakwood Tower** — 22-story mixed-use tower, Denver CO
+- **Riverside Industrial Park** — warehouse/logistics facility, Aurora CO
 
 Deficiencies span all severity levels and statuses so the dashboard and filters are populated immediately.
