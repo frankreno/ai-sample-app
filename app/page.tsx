@@ -14,9 +14,9 @@ function statusDotColor(status: string) {
     "Open": "bg-red-500",
     "In Progress": "bg-amber-500",
     "Resolved": "bg-green-500",
-    "Closed": "bg-stone-400",
+    "Closed": "bg-stone-500",
   };
-  return m[status] ?? "bg-stone-400";
+  return m[status] ?? "bg-stone-500";
 }
 
 export default function Home() {
@@ -120,7 +120,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-50">
+    <div className="min-h-screen bg-stone-950">
       {/* Header */}
       <header className="bg-stone-900 border-b border-stone-700">
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-14">
@@ -149,7 +149,7 @@ export default function Home() {
           <div className="flex items-center gap-2">
             {reportUrl && (
               <a href={reportUrl} download
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-600 text-white hover:bg-green-500 transition-colors">
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-700 text-white hover:bg-green-600 transition-colors">
                 ↓ Download Report
               </a>
             )}
@@ -175,7 +175,7 @@ export default function Home() {
         {/* Project title */}
         {selectedProject && (
           <div>
-            <h1 className="text-2xl font-bold text-stone-900">{selectedProject.name}</h1>
+            <h1 className="text-2xl font-bold text-stone-100">{selectedProject.name}</h1>
             <p className="text-stone-500 text-sm">{selectedProject.location}</p>
           </div>
         )}
@@ -185,19 +185,19 @@ export default function Home() {
           <div className="space-y-3">
             {/* Total + severity cards */}
             <div className="grid grid-cols-5 gap-3">
-              <div className="bg-white border border-stone-200 rounded-xl p-4 flex flex-col shadow-sm">
-                <span className="text-3xl font-black text-stone-900">{stats.total}</span>
-                <span className="text-[10px] text-stone-400 font-semibold uppercase tracking-widest mt-1">Total</span>
+              <div className="bg-stone-800 border border-stone-700 rounded-xl p-4 flex flex-col">
+                <span className="text-3xl font-black text-stone-100">{stats.total}</span>
+                <span className="text-[10px] text-stone-500 font-semibold uppercase tracking-widest mt-1">Total</span>
               </div>
               {SEVERITIES.map((sev) => (
                 <button
                   key={sev}
                   onClick={() => setFilterSeverity(filterSeverity === sev ? "" : sev)}
-                  className={`bg-white border rounded-xl p-4 flex flex-col text-left transition-all hover:shadow-md shadow-sm ${
-                    filterSeverity === sev ? "border-stone-700 ring-2 ring-stone-700" : "border-stone-200"
+                  className={`bg-stone-800 border rounded-xl p-4 flex flex-col text-left transition-all hover:border-stone-500 ${
+                    filterSeverity === sev ? "border-orange-500 ring-2 ring-orange-500" : "border-stone-700"
                   }`}
                 >
-                  <span className="text-2xl font-black text-stone-900">{stats.by_severity[sev] ?? 0}</span>
+                  <span className="text-2xl font-black text-stone-100">{stats.by_severity[sev] ?? 0}</span>
                   <span className={`mt-1.5 inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${SEVERITY_STYLES[sev]}`}>
                     {sev}
                   </span>
@@ -211,15 +211,15 @@ export default function Home() {
                 <button
                   key={st}
                   onClick={() => setFilterStatus(filterStatus === st ? "" : st)}
-                  className={`bg-white border rounded-xl px-4 py-3 flex items-center justify-between shadow-sm transition-all hover:shadow-md ${
-                    filterStatus === st ? "border-stone-700 ring-2 ring-stone-700" : "border-stone-200"
+                  className={`bg-stone-800 border rounded-xl px-4 py-3 flex items-center justify-between transition-all hover:border-stone-500 ${
+                    filterStatus === st ? "border-orange-500 ring-2 ring-orange-500" : "border-stone-700"
                   }`}
                 >
-                  <div className="flex items-center gap-2 text-sm text-stone-700">
+                  <div className="flex items-center gap-2 text-sm text-stone-300">
                     <span className={`w-2 h-2 rounded-full ${statusDotColor(st)}`} />
                     {st}
                   </div>
-                  <span className="text-lg font-bold text-stone-900">{stats.by_status[st] ?? 0}</span>
+                  <span className="text-lg font-bold text-stone-100">{stats.by_status[st] ?? 0}</span>
                 </button>
               ))}
             </div>
@@ -230,17 +230,17 @@ export default function Home() {
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-sm font-medium text-stone-500">Filter:</span>
           <select value={filterSeverity} onChange={(e) => setFilterSeverity(e.target.value)}
-            className="border border-stone-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-stone-400">
+            className="border border-stone-700 rounded-lg px-3 py-1.5 text-sm bg-stone-800 text-stone-200 focus:outline-none focus:ring-2 focus:ring-stone-500">
             <option value="">All Severities</option>
             {SEVERITIES.map((s) => <option key={s}>{s}</option>)}
           </select>
           <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
-            className="border border-stone-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-stone-400">
+            className="border border-stone-700 rounded-lg px-3 py-1.5 text-sm bg-stone-800 text-stone-200 focus:outline-none focus:ring-2 focus:ring-stone-500">
             <option value="">All Statuses</option>
             {STATUSES.map((s) => <option key={s}>{s}</option>)}
           </select>
           <select value={filterTrade} onChange={(e) => setFilterTrade(e.target.value)}
-            className="border border-stone-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-stone-400">
+            className="border border-stone-700 rounded-lg px-3 py-1.5 text-sm bg-stone-800 text-stone-200 focus:outline-none focus:ring-2 focus:ring-stone-500">
             <option value="">All Trades</option>
             {trades.map((t) => <option key={t}>{t}</option>)}
           </select>
@@ -265,15 +265,15 @@ export default function Home() {
               Clear filters
             </button>
           )}
-          <span className="ml-auto text-sm text-stone-400">{deficiencies.length} result{deficiencies.length !== 1 ? "s" : ""}</span>
+          <span className="ml-auto text-sm text-stone-500">{deficiencies.length} result{deficiencies.length !== 1 ? "s" : ""}</span>
         </div>
 
         {/* Deficiency table */}
-        <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
+        <div className="bg-stone-900 border border-stone-700 rounded-xl overflow-hidden">
           {deficiencies.length === 0 ? (
-            <div className="text-center py-16 text-stone-400">
+            <div className="text-center py-16 text-stone-500">
               <div className="text-4xl mb-3">📋</div>
-              <div className="font-medium text-stone-600">No deficiencies found</div>
+              <div className="font-medium text-stone-400">No deficiencies found</div>
               <div className="text-sm mt-1">
                 {filterSeverity || filterStatus || filterTrade || filterDateFrom || filterDateTo
                   ? "Try adjusting your filters"
@@ -299,22 +299,22 @@ export default function Home() {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-stone-100">
+                <tbody className="divide-y divide-stone-800">
                   {deficiencies.map((def) => {
                     const photos: string[] = JSON.parse(def.photo_paths);
                     return (
-                      <tr key={def.id} className="hover:bg-stone-50/80 transition-colors">
-                        <td className="px-4 py-3 font-mono text-[11px] text-stone-400 whitespace-nowrap">{def.id}</td>
+                      <tr key={def.id} className="hover:bg-stone-800/60 transition-colors">
+                        <td className="px-4 py-3 font-mono text-[11px] text-stone-500 whitespace-nowrap">{def.id}</td>
                         <td className="px-4 py-3 max-w-[260px]">
-                          <div className="font-semibold text-stone-900 truncate">{def.title}</div>
+                          <div className="font-semibold text-stone-100 truncate">{def.title}</div>
                           {def.description && (
-                            <div className="text-xs text-stone-400 mt-0.5 truncate">{def.description}</div>
+                            <div className="text-xs text-stone-500 mt-0.5 truncate">{def.description}</div>
                           )}
                           {photos.length > 0 && (
                             <div className="flex gap-2 mt-1">
                               {photos.map((p, i) => (
                                 <a key={i} href={p} target="_blank" rel="noreferrer"
-                                  className="text-[10px] text-blue-500 hover:underline">📷 Photo {i + 1}</a>
+                                  className="text-[10px] text-blue-400 hover:underline">📷 Photo {i + 1}</a>
                               ))}
                             </div>
                           )}
@@ -327,10 +327,10 @@ export default function Home() {
                             onClick={() => cycleStatus(def)}
                           />
                         </td>
-                        <td className="px-4 py-3 text-stone-600 whitespace-nowrap">{def.category}</td>
-                        <td className="px-4 py-3 text-stone-600 max-w-[140px] truncate">{def.location || "—"}</td>
-                        <td className="px-4 py-3 text-stone-600 whitespace-nowrap">{def.trade || "—"}</td>
-                        <td className="px-4 py-3 text-stone-400 text-[11px] whitespace-nowrap">{fmt(def.created_at)}</td>
+                        <td className="px-4 py-3 text-stone-400 whitespace-nowrap">{def.category}</td>
+                        <td className="px-4 py-3 text-stone-400 max-w-[140px] truncate">{def.location || "—"}</td>
+                        <td className="px-4 py-3 text-stone-400 whitespace-nowrap">{def.trade || "—"}</td>
+                        <td className="px-4 py-3 text-stone-500 text-[11px] whitespace-nowrap">{fmt(def.created_at)}</td>
                       </tr>
                     );
                   })}

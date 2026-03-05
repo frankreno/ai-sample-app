@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Upload Photo — SiteCheck</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #1e1e1e;
+      --surface: #2a2a2a;
+      --border: #3a3a3a;
+      --border-hover: #555;
+      --text: #e8e8e8;
+      --text-muted: #888;
+      --accent: #4a9eff;
+      --radius: 10px;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f5f5f5;
+        --surface: #fff;
+        --border: #d0d0d0;
+        --border-hover: #999;
+        --text: #111;
+        --text-muted: #666;
+      }
+    }
+
+    body {
+      font-family: var(--font);
+      font-size: 14px;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+    }
+
+    h2 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .subtitle { font-size: 12px; color: var(--text-muted); margin-bottom: 16px; }
+    .def-id { font-family: monospace; }
+
+    /* Drop zone */
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 32px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      position: relative;
+    }
+
+    .dropzone:hover,
+    .dropzone.drag-over {
+      border-color: var(--accent);
+      background: #4a9eff0a;
+    }
+
+    .dropzone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .drop-icon { font-size: 32px; margin-bottom: 8px; }
+    .drop-label { font-size: 13px; color: var(--text-muted); }
+    .drop-hint  { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+    /* Preview */
+    .preview {
+      display: none;
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 12px;
+      position: relative;
+    }
+
+    .preview img {
+      width: 100%;
+      max-height: 200px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .preview .remove-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(0,0,0,0.6);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+
+    .file-name {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 6px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      justify-content: flex-end;
+    }
+
+    button {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: var(--font);
+      transition: opacity 0.15s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:disabled { opacity: 0.4; cursor: default; }
+    .btn-primary:not(:disabled):hover { background: #3a8eef; }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { border-color: var(--text-muted); }
+
+    .status-bar {
+      margin-top: 10px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      display: none;
+    }
+    .status-bar.error   { background: #ff4d4d22; color: #ff4d4d; display: block; }
+    .status-bar.success { background: #4caf5022; color: #4caf50; display: block; }
+
+    .progress {
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin-top: 10px;
+      display: none;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      background: var(--accent);
+      width: 0%;
+      transition: width 0.3s;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Attach Photo</h2>
+<p class="subtitle" id="subtitle">
+  Attach a photo to <span class="def-id" id="def-id">…</span>
+</p>
+
+<div class="preview" id="preview">
+  <img id="preview-img" src="" alt="Preview" />
+  <button class="remove-btn" id="remove-btn" title="Remove">✕</button>
+</div>
+<div class="file-name" id="file-name"></div>
+
+<div class="dropzone" id="dropzone">
+  <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,image/gif" />
+  <div class="drop-icon">📷</div>
+  <div class="drop-label">Drop a photo here or click to browse</div>
+  <div class="drop-hint">JPEG, PNG, WebP or GIF · max 10 MB</div>
+</div>
+
+<div class="progress" id="progress">
+  <div class="progress-bar" id="progress-bar"></div>
+</div>
+
+<div class="actions">
+  <button type="button" class="btn-secondary" id="skip-btn">Skip</button>
+  <button type="button" class="btn-primary" id="upload-btn" disabled>Upload Photo</button>
+</div>
+
+<div class="status-bar" id="status-bar"></div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let apiBase      = "http://localhost:3000";
+let deficiencyId = "";
+let selectedFile = null;
+
+// ── Bridge ────────────────────────────────────────────────────────────────────
+function postToParent(payload) { window.parent.postMessage(payload, "*"); }
+function sendResult(data)      { postToParent({ type: "mcp:result", result: data }); }
+function sendSkip()            { postToParent({ type: "mcp:result", result: { skipped: true } }); }
+
+// ── Initialize ────────────────────────────────────────────────────────────────
+function init(data) {
+  apiBase      = data.apiBase ?? apiBase;
+  deficiencyId = data.deficiency_id ?? "";
+
+  const label = `${deficiencyId}${data.deficiencyTitle ? ": " + data.deficiencyTitle : ""}`;
+  document.getElementById("def-id").textContent = label;
+
+  if (data.existingCount > 0) {
+    document.querySelector(".drop-hint").textContent =
+      `${data.existingCount} photo(s) already attached · JPEG, PNG, WebP or GIF · max 10 MB`;
+  }
+}
+
+// ── File selection ────────────────────────────────────────────────────────────
+function selectFile(file) {
+  if (!file) return;
+
+  const MAX = 10 * 1024 * 1024;
+  if (file.size > MAX) { showError("File too large — maximum 10 MB."); return; }
+
+  const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+  if (!allowed.includes(file.type)) { showError("Only JPEG, PNG, WebP or GIF images are accepted."); return; }
+
+  selectedFile = file;
+  document.getElementById("upload-btn").disabled = false;
+  document.getElementById("file-name").textContent = file.name;
+  document.getElementById("status-bar").className = "status-bar"; // clear errors
+
+  // Thumbnail preview
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    document.getElementById("preview-img").src = e.target.result;
+    document.getElementById("preview").style.display = "block";
+    document.getElementById("dropzone").style.display = "none";
+  };
+  reader.readAsDataURL(file);
+}
+
+document.getElementById("file-input").addEventListener("change", (e) => {
+  selectFile(e.target.files?.[0]);
+});
+
+// Drag and drop
+const dz = document.getElementById("dropzone");
+dz.addEventListener("dragover",  (e) => { e.preventDefault(); dz.classList.add("drag-over"); });
+dz.addEventListener("dragleave", ()  => dz.classList.remove("drag-over"));
+dz.addEventListener("drop", (e) => {
+  e.preventDefault();
+  dz.classList.remove("drag-over");
+  selectFile(e.dataTransfer.files?.[0]);
+});
+
+// Remove / re-pick
+document.getElementById("remove-btn").addEventListener("click", () => {
+  selectedFile = null;
+  document.getElementById("upload-btn").disabled = true;
+  document.getElementById("preview").style.display = "none";
+  document.getElementById("dropzone").style.display = "block";
+  document.getElementById("file-name").textContent = "";
+  document.getElementById("file-input").value = "";
+});
+
+// ── Upload ────────────────────────────────────────────────────────────────────
+document.getElementById("upload-btn").addEventListener("click", async () => {
+  if (!selectedFile || !deficiencyId) return;
+
+  const uploadBtn  = document.getElementById("upload-btn");
+  const progressEl = document.getElementById("progress");
+  const progressBar = document.getElementById("progress-bar");
+
+  uploadBtn.disabled = true;
+  uploadBtn.textContent = "Uploading…";
+  progressEl.style.display = "block";
+
+  // Animate progress bar (indeterminate feel)
+  let pct = 0;
+  const tick = setInterval(() => {
+    pct = Math.min(pct + 8, 85);
+    progressBar.style.width = pct + "%";
+  }, 120);
+
+  try {
+    const formData = new FormData();
+    // Field name must match what the REST API expects: "photo"
+    formData.append("photo", selectedFile);
+
+    const res = await fetch(
+      `${apiBase}/api/deficiencies/${encodeURIComponent(deficiencyId)}/photos`,
+      { method: "POST", body: formData }
+      // Do NOT set Content-Type — browser sets it with the correct boundary
+    );
+    const json = await res.json();
+
+    clearInterval(tick);
+    progressBar.style.width = "100%";
+
+    if (!json.success) {
+      showError(`Upload failed: ${json.error}`);
+      return;
+    }
+
+    showSuccess(`Photo attached: ${json.data.photo_url}`);
+    sendResult({ photo_url: json.data.photo_url, deficiency: json.data.deficiency });
+
+  } catch (err) {
+    clearInterval(tick);
+    showError(`Network error: ${err.message}`);
+  } finally {
+    uploadBtn.disabled = false;
+    uploadBtn.textContent = "Upload Photo";
+  }
+});
+
+document.getElementById("skip-btn").addEventListener("click", sendSkip);
+
+function showError(msg) {
+  const bar = document.getElementById("status-bar");
+  bar.className = "status-bar error";
+  bar.textContent = msg;
+  document.getElementById("progress").style.display = "none";
+}
+
+function showSuccess(msg) {
+  const bar = document.getElementById("status-bar");
+  bar.className = "status-bar success";
+  bar.textContent = msg;
+}
+
+// ── Apps SDK bridge ───────────────────────────────────────────────────────────
+function rpcSend(method, params, id) {
+  const msg = { jsonrpc: "2.0", method, params: params ?? {} };
+  if (id !== undefined) msg.id = id;
+  window.parent.postMessage(msg, "*");
+}
+rpcSend("ui/initialize", {
+  appInfo: { name: "SiteCheck", version: "1.0.0" },
+  appCapabilities: {},
+  protocolVersion: "2026-01-26",
+}, "init");
+window.addEventListener("message", (event) => {
+  if (event.source !== window.parent) return;
+  const msg = event.data;
+  if (!msg || msg.jsonrpc !== "2.0") return;
+  if (msg.id === "init") rpcSend("ui/notifications/initialized");
+  if (msg.method === "ui/notifications/tool-result") init(msg.params?.structuredContent);
+});
+
+// ── Dev mode ──────────────────────────────────────────────────────────────────
+const p = new URLSearchParams(location.search);
+if (p.has("deficiency_id")) {
+  init({
+    deficiency_id:   p.get("deficiency_id"),
+    deficiencyTitle: p.get("deficiencyTitle") ?? "Test deficiency",
+    existingCount:   Number(p.get("existingCount") ?? 0),
+    apiBase:         p.get("apiBase") ?? "http://localhost:3000",
+  });
+}
+</script>
+</body>
+</html>

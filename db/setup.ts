@@ -39,11 +39,13 @@ const projects = [
   },
 ];
 
+const now = new Date().toISOString();
+
 const insertProject = db.prepare(
-  "INSERT INTO projects (id, name, location, description) VALUES (?, ?, ?, ?)"
+  "INSERT INTO projects (id, name, location, description, created_at) VALUES (?, ?, ?, ?, ?)"
 );
 for (const p of projects) {
-  insertProject.run(p.id, p.name, p.location, p.description);
+  insertProject.run(p.id, p.name, p.location, p.description, now);
 }
 
 // Seed deficiencies
@@ -150,22 +152,15 @@ const deficiencies = [
 ];
 
 const insertDeficiency = db.prepare(`
-  INSERT INTO deficiencies (id, project_id, title, description, category, severity, status, location, trade, photo_paths)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO deficiencies (id, project_id, title, description, category, severity, status, location, trade, photo_paths, created_at, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
 for (const d of deficiencies) {
   insertDeficiency.run(
-    d.id,
-    d.project_id,
-    d.title,
-    d.description,
-    d.category,
-    d.severity,
-    d.status,
-    d.location,
-    d.trade,
-    "[]"
+    d.id, d.project_id, d.title, d.description,
+    d.category, d.severity, d.status, d.location,
+    d.trade, "[]", now, now
   );
 }
 

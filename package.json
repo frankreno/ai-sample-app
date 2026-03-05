@@ -7,15 +7,19 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "setup": "npx tsx db/setup.ts"
+    "setup": "npx tsx db/setup.ts",
+    "mcp": "node mcp/server.js"
   },
   "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^1.1.2",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "better-sqlite3": "^12.6.2",
     "next": "16.1.6",
     "pdfkit": "^0.17.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

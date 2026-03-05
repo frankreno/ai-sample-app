@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS projects (
   name TEXT NOT NULL,
   location TEXT NOT NULL,
   description TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
 );
 
 CREATE TABLE IF NOT EXISTS deficiencies (
@@ -17,6 +17,6 @@ CREATE TABLE IF NOT EXISTS deficiencies (
   location TEXT,
   trade TEXT,
   photo_paths TEXT NOT NULL DEFAULT '[]',
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
 );

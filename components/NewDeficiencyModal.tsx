@@ -60,77 +60,77 @@ export function NewDeficiencyModal({ projectId, onClose, onCreated }: Props) {
   }
 
   const severityColors: Record<string, string> = {
-    Critical: "border-red-500 bg-red-50",
-    Major: "border-orange-500 bg-orange-50",
-    Minor: "border-yellow-400 bg-yellow-50",
-    Observation: "border-blue-500 bg-blue-50",
+    Critical: "border-red-500 bg-red-950 text-red-300",
+    Major: "border-orange-500 bg-orange-950 text-orange-300",
+    Minor: "border-yellow-400 bg-yellow-950 text-yellow-300",
+    Observation: "border-blue-500 bg-blue-950 text-blue-300",
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-stone-900 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 bg-stone-900 rounded-t-xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-700 bg-stone-800 rounded-t-xl">
           <h2 className="text-lg font-bold text-white">New Deficiency</h2>
           <button onClick={onClose} className="text-stone-400 hover:text-white text-2xl leading-none">×</button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {error && (
-            <div className="bg-red-50 border border-red-300 text-red-700 rounded-lg px-4 py-2 text-sm">{error}</div>
+            <div className="bg-red-950 border border-red-800 text-red-400 rounded-lg px-4 py-2 text-sm">{error}</div>
           )}
 
           {/* Title */}
           <div>
-            <label className="block text-sm font-semibold text-stone-700 mb-1">Title *</label>
+            <label className="block text-sm font-semibold text-stone-300 mb-1">Title *</label>
             <input
               type="text"
               value={form.title}
               onChange={(e) => set("title", e.target.value)}
               placeholder="Brief description of the deficiency"
-              className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-500"
+              className="w-full border border-stone-700 rounded-lg px-3 py-2 text-sm bg-stone-800 text-stone-100 placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
           </div>
 
           {/* Category + Trade */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-stone-700 mb-1">Category</label>
+              <label className="block text-sm font-semibold text-stone-300 mb-1">Category</label>
               <select
                 value={form.category}
                 onChange={(e) => set("category", e.target.value)}
-                className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-500"
+                className="w-full border border-stone-700 rounded-lg px-3 py-2 text-sm bg-stone-800 text-stone-100 placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
               >
                 {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-stone-700 mb-1">Trade</label>
+              <label className="block text-sm font-semibold text-stone-300 mb-1">Trade</label>
               <input
                 type="text"
                 value={form.trade}
                 onChange={(e) => set("trade", e.target.value)}
                 placeholder="e.g. Electrical, Concrete"
-                className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-500"
+                className="w-full border border-stone-700 rounded-lg px-3 py-2 text-sm bg-stone-800 text-stone-100 placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
             </div>
           </div>
 
           {/* Location */}
           <div>
-            <label className="block text-sm font-semibold text-stone-700 mb-1">Location</label>
+            <label className="block text-sm font-semibold text-stone-300 mb-1">Location</label>
             <input
               type="text"
               value={form.location}
               onChange={(e) => set("location", e.target.value)}
               placeholder="e.g. Grid B4, Floor 14, East Wall"
-              className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-500"
+              className="w-full border border-stone-700 rounded-lg px-3 py-2 text-sm bg-stone-800 text-stone-100 placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
           </div>
 
           {/* Severity picker */}
           <div>
-            <label className="block text-sm font-semibold text-stone-700 mb-2">Severity</label>
+            <label className="block text-sm font-semibold text-stone-300 mb-2">Severity</label>
             <div className="grid grid-cols-4 gap-2">
               {SEVERITIES.map((s) => (
                 <button
@@ -140,7 +140,7 @@ export function NewDeficiencyModal({ projectId, onClose, onCreated }: Props) {
                   className={`py-2 rounded-lg border-2 text-sm font-bold transition-all ${
                     form.severity === s
                       ? severityColors[s] + " ring-2 ring-offset-1 ring-stone-400"
-                      : "border-stone-200 bg-white text-stone-500 hover:border-stone-400"
+                      : "border-stone-700 bg-stone-800 text-stone-400 hover:border-stone-500"
                   }`}
                 >
                   {s}
@@ -151,7 +151,7 @@ export function NewDeficiencyModal({ projectId, onClose, onCreated }: Props) {
 
           {/* Status */}
           <div>
-            <label className="block text-sm font-semibold text-stone-700 mb-1">Initial Status</label>
+            <label className="block text-sm font-semibold text-stone-300 mb-1">Initial Status</label>
             <div className="flex gap-2 flex-wrap">
               {STATUSES.map((s) => (
                 <button
@@ -161,7 +161,7 @@ export function NewDeficiencyModal({ projectId, onClose, onCreated }: Props) {
                   className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
                     form.status === s
                       ? "bg-stone-800 text-white border-stone-800"
-                      : "bg-white text-stone-500 border-stone-300 hover:border-stone-500"
+                      : "bg-stone-800 text-stone-400 border-stone-600 hover:border-stone-400"
                   }`}
                 >
                   {s}
@@ -172,25 +172,25 @@ export function NewDeficiencyModal({ projectId, onClose, onCreated }: Props) {
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-semibold text-stone-700 mb-1">Description</label>
+            <label className="block text-sm font-semibold text-stone-300 mb-1">Description</label>
             <textarea
               value={form.description}
               onChange={(e) => set("description", e.target.value)}
               rows={3}
               placeholder="Detailed observations, measurements, references to drawings..."
-              className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-500 resize-none"
+              className="w-full border border-stone-700 rounded-lg px-3 py-2 text-sm bg-stone-800 text-stone-100 placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
             />
           </div>
 
           {/* Photo upload */}
           <div>
-            <label className="block text-sm font-semibold text-stone-700 mb-1">Photo (optional)</label>
+            <label className="block text-sm font-semibold text-stone-300 mb-1">Photo (optional)</label>
             <div
-              className="border-2 border-dashed border-stone-300 rounded-lg p-4 text-center cursor-pointer hover:border-stone-500 transition-colors"
+              className="border-2 border-dashed border-stone-700 rounded-lg p-4 text-center cursor-pointer hover:border-stone-500 transition-colors"
               onClick={() => fileRef.current?.click()}
             >
               {photo ? (
-                <div className="flex items-center justify-center gap-2 text-sm text-stone-700">
+                <div className="flex items-center justify-center gap-2 text-sm text-stone-300">
                   <span className="text-green-600">✓</span>
                   <span className="font-medium">{photo.name}</span>
                   <button
@@ -220,7 +220,7 @@ export function NewDeficiencyModal({ projectId, onClose, onCreated }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-50"
+              className="px-4 py-2 text-sm rounded-lg border border-stone-700 text-stone-400 hover:bg-stone-800"
             >
               Cancel
             </button>

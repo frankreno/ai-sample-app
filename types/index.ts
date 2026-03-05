@@ -50,8 +50,8 @@ export const SEVERITY_STYLES: Record<string, string> = {
 };
 
 export const STATUS_STYLES: Record<string, string> = {
-  "Open": "bg-red-100 text-red-800 border border-red-300",
-  "In Progress": "bg-amber-100 text-amber-800 border border-amber-300",
-  "Resolved": "bg-green-100 text-green-800 border border-green-300",
-  "Closed": "bg-stone-100 text-stone-600 border border-stone-300",
+  "Open": "bg-red-950 text-red-400 border border-red-800",
+  "In Progress": "bg-amber-950 text-amber-400 border border-amber-800",
+  "Resolved": "bg-green-950 text-green-400 border border-green-800",
+  "Closed": "bg-stone-800 text-stone-400 border border-stone-600",
 };
