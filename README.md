@@ -93,14 +93,14 @@ All responses use a consistent envelope:
 
 | Endpoint | Method | Description |
 |---|---|---|
-| `/api/projects` | GET | List all projects |
-| `/api/deficiencies` | GET | List deficiencies — filters: `project_id` (required), `severity`, `status`, `trade`; pagination: `page`, `limit` |
+| `/api/projects` | GET | List all projects — optional `q` to search by name or location |
+| `/api/deficiencies` | GET | List deficiencies — `project_id` (required), optional filters: `severity`, `status`, `trade`, `date_from`, `date_to`; sorting: `sort_by`, `sort_dir`; pagination: `page`, `limit` |
 | `/api/deficiencies` | POST | Create a deficiency |
 | `/api/deficiencies/[id]` | GET | Get a single deficiency |
-| `/api/deficiencies/[id]` | PATCH | Update fields (severity, status, title, etc.) |
-| `/api/deficiencies/[id]/photos` | POST | Upload a photo (multipart/form-data) |
+| `/api/deficiencies/[id]` | PATCH | Update fields (severity, status, title, description, category, location, trade) |
+| `/api/deficiencies/[id]/photos` | POST | Upload a photo (multipart/form-data, field name `photo`) — returns updated deficiency + `photo_url` |
 | `/api/deficiencies/stats` | GET | Counts grouped by severity and status for a `project_id` |
-| `/api/reports/generate` | POST | Generate a PDF report, returns download URL |
+| `/api/reports/generate` | POST | Generate a PDF report — returns `download_url` and `deficiency_count` |
 
 ### Enums
 
