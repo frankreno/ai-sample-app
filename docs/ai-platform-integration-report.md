@@ -230,6 +230,180 @@ Beyond HTTP status codes, structured `error_code` fields in responses allow the 
 
 ---
 
+## Part 1B: How It Actually Works — A Message's Journey from Keyboard to Screen
+
+This section walks through exactly what happens when a user types a message into ChatGPT and gets back an interactive widget from a connected vendor app. We'll use a real example from SiteCheck AI: the user types **"Show me deficiencies for Maple Street"** and gets back an interactive table.
+
+---
+
+### Step 1: The user types a message
+
+The user is in ChatGPT and has already connected the SiteCheck app. They type:
+
+> "Show me deficiencies for Maple Street"
+
+At this point, ChatGPT has no idea what "Maple Street" is, what a deficiency is, or where any of that data lives. All it knows is:
+- It has a list of tools that SiteCheck registered (search projects, list deficiencies, log deficiency, etc.)
+- Each tool has a name, a description, and a list of expected inputs
+
+---
+
+### Step 2: The AI reads the tool descriptions and makes a plan
+
+Before responding, the AI reads through every tool description available from connected apps. It's essentially scanning a menu of capabilities:
+
+- `search_projects` — "Search SiteCheck projects by name or location..."
+- `get_deficiency_list` — "List deficiencies for the active project..."
+- `log_deficiency` — "Extract deficiency details and show a form..."
+- ...and so on
+
+Based on the user's words, the AI decides: "The user mentioned 'Maple Street' — I should search for a project with that name first, then list its deficiencies."
+
+The AI may do this in multiple steps (call one tool, use its result to call another) or in a single step if it has enough context.
+
+---
+
+### Step 3: ChatGPT calls the vendor's connector server
+
+ChatGPT sends an HTTP request to the SiteCheck connector server (the MCP server). This request says, in effect: "Call the `search_projects` tool with the argument `q = 'Maple Street'`."
+
+The message is formatted as a JSON-RPC 2.0 request — a standard format for remote procedure calls. It travels over HTTPS to wherever the connector server is hosted (in development, this is typically through an ngrok tunnel to a developer's laptop).
+
+---
+
+### Step 4: The connector server calls the vendor's API
+
+The connector server is intentionally simple — it doesn't contain any business logic. When it receives the `search_projects` call, it turns around and makes a request to the SiteCheck web app's REST API:
+
+```
+GET /api/projects?q=Maple+Street
+```
+
+The REST API queries the database, finds matching projects, and returns them. The connector server packages this result into the format ChatGPT expects and sends it back.
+
+This design is important: the connector server is a thin translator between ChatGPT's protocol and the vendor's existing API. All the real work (database queries, validation, business rules) stays in the vendor's app.
+
+---
+
+### Step 5: The AI gets the result and decides what to do next
+
+ChatGPT receives the search results — say, two projects with "Maple" in the name. The AI now has project IDs it can use.
+
+If the tool was configured to show a widget (like a project picker), ChatGPT renders that widget and waits for the user. If it was a silent lookup tool (no widget), the AI continues on its own — it picks the best match and calls the next tool.
+
+In our example, `search_projects` shows a project dashboard widget. The user sees clickable project cards and selects "Maple Street Renovation." Or, the AI may proceed directly by calling `get_deficiency_list` with the project ID it found.
+
+---
+
+### Step 6: ChatGPT calls the deficiency list tool
+
+Now ChatGPT calls `get_deficiency_list` with the project ID. The same flow repeats:
+
+1. ChatGPT sends a tool call to the connector server
+2. The connector server calls the REST API: `GET /api/deficiencies?project_id=abc123`
+3. The API returns a list of deficiencies
+4. The connector server packages the results
+
+But this time, the tool result includes two important pieces:
+
+- **Structured content** — the raw data (list of deficiencies, total count, active filters) in a machine-readable format
+- **A widget reference** — a pointer to an HTML file (`ui://sitecheck/deficiency-table.html`) that knows how to display this data
+
+---
+
+### Step 7: ChatGPT loads the widget
+
+When ChatGPT sees that a tool result has a widget reference, it does the following:
+
+1. **Fetches the widget HTML** from the connector server (the HTML file was registered as a "resource" when the server started)
+2. **Creates a sandboxed iframe** inside the chat window — this is like a tiny, isolated browser window embedded in the conversation
+3. **Loads the widget HTML** into that iframe
+
+The widget is now running, but it doesn't have any data yet. It's just a blank table waiting to be populated.
+
+---
+
+### Step 8: The widget and ChatGPT do a handshake
+
+Before any data flows, the widget and ChatGPT's host page confirm they can talk to each other:
+
+1. The widget says: "I'm the SiteCheck app, version 1.0 — I'm ready to initialize"
+2. ChatGPT responds: "Acknowledged — here's some context about the display environment"
+3. The widget says: "Initialization complete — send me the data"
+
+This handshake uses `window.postMessage` — the standard browser mechanism for communication between a page and an embedded iframe. The messages follow JSON-RPC 2.0 format so both sides know exactly how to parse them.
+
+---
+
+### Step 9: ChatGPT sends the tool data to the widget
+
+Now ChatGPT sends the structured content from Step 6 into the widget:
+
+```
+"Here are 8 deficiencies for this project, with their IDs, titles,
+severities, statuses, and dates. No filters are active."
+```
+
+The widget receives this data and populates itself — the table fills in with rows, severity badges get color-coded, column headers become sortable. Everything the user sees is rendered by the widget, not by the AI.
+
+---
+
+### Step 10: The AI writes a short response (or nothing at all)
+
+Because the tool was configured with `ui_fulfills_request: true` and an empty `content` array, the AI knows the widget is handling the display. So instead of listing out all 8 deficiencies in text (which would duplicate what the table already shows), the AI writes something minimal:
+
+> "Here are the deficiencies for Maple Street."
+
+The combination of empty content, the fulfillment flag, and the tool description telling the AI to be minimal all work together to prevent the AI from narrating what the user can already see.
+
+---
+
+### Step 11: The user interacts with the widget
+
+From here, the widget is interactive. The user can:
+- **Sort columns** by clicking headers (handled entirely within the widget — no round-trip to the server)
+- **Click a deficiency** to view details (the widget can call back to the API directly, or signal ChatGPT to call another tool)
+- **Take an action** like changing severity (which opens a new widget in the conversation)
+
+When the widget needs to communicate back to ChatGPT — for example, to report that the user selected a project — it sends a message through the same postMessage channel. ChatGPT receives this and can trigger a new conversation turn or tool call.
+
+---
+
+### The complete journey, summarized
+
+```
+User types message
+    ↓
+AI reads tool descriptions, picks the right tool(s)
+    ↓
+ChatGPT sends tool call → Connector server → REST API → Database
+    ↓
+Database result flows back: Database → REST API → Connector server → ChatGPT
+    ↓
+ChatGPT sees a widget reference in the result
+    ↓
+ChatGPT fetches the widget HTML, loads it in a sandboxed iframe
+    ↓
+Widget and ChatGPT handshake via postMessage
+    ↓
+ChatGPT passes the structured data into the widget
+    ↓
+Widget renders the interactive UI (table, form, chart, etc.)
+    ↓
+AI writes a minimal text response (or nothing)
+    ↓
+User sees the widget and interacts with it directly
+```
+
+### What makes this work well
+
+- **The AI is a router, not a renderer.** It figures out what the user wants, calls the right tool, and gets out of the way. The widget handles the display.
+- **The connector server is a translator, not a brain.** It converts between ChatGPT's protocol and the vendor's existing API. No business logic is duplicated.
+- **The widget is self-contained.** It receives data, renders it, and handles interactions. It doesn't depend on the AI to explain what it shows.
+- **Multiple layers prevent duplication.** Empty content arrays, fulfillment flags, and careful tool descriptions all work together to stop the AI from narrating what the widget already displays.
+
+---
+
 ## Part 2: What You Would Need to Build
 
 This section maps the ChatGPT feature taxonomy to a greenfield platform build, organized by priority.

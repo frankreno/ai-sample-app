@@ -154,17 +154,18 @@ const SEVERITY_DESCS = {
 
 // ── Initialize ────────────────────────────────────────────────────────────────
 function init(data) {
-  apiBase        = data.apiBase ?? apiBase;
-  deficiencyId   = data.deficiency_id ?? "";
-  selectedSeverity = data.selectedSeverity ?? "";
+  const safe = data && typeof data === "object" ? data : {};
+  apiBase        = safe.apiBase ?? apiBase;
+  deficiencyId   = safe.deficiency_id ?? "";
+  selectedSeverity = safe.selectedSeverity ?? "";
 
   document.getElementById("def-id").textContent =
-    `${deficiencyId}${data.deficiencyTitle ? ": " + data.deficiencyTitle : ""}`;
+    `${deficiencyId}${safe.deficiencyTitle ? ": " + safe.deficiencyTitle : ""}`;
 
   const picker = document.getElementById("picker");
   picker.innerHTML = "";
 
-  const severities = data.severities ?? ["Critical", "Major", "Minor", "Observation"];
+  const severities = Array.isArray(safe.severities) ? safe.severities : ["Critical", "Major", "Minor", "Observation"];
   for (const sev of severities) {
     const tile = document.createElement("div");
     tile.className = `sev-tile tile-${sev}`;
@@ -186,7 +187,8 @@ function selectSeverity(value) {
 
 // ── Save ──────────────────────────────────────────────────────────────────────
 document.getElementById("save-btn").addEventListener("click", async () => {
-  if (!selectedSeverity || !deficiencyId) return;
+  if (!selectedSeverity) { showError("Select a severity level first."); return; }
+  if (!deficiencyId) { showError("No deficiency ID — try again or go back."); return; }
 
   const saveBtn = document.getElementById("save-btn");
   saveBtn.disabled = true;
@@ -215,7 +217,7 @@ document.getElementById("save-btn").addEventListener("click", async () => {
   }
 });
 
-document.getElementById("cancel-btn").addEventListener("click", sendCancel);
+document.getElementById("cancel-btn").addEventListener("click", () => { if (typeof window.sendCancel === "function") window.sendCancel(); });
 
 function showError(msg) {
   const bar = document.getElementById("status-bar");
