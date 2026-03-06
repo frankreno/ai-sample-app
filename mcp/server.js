@@ -52,10 +52,22 @@ const CATEGORIES = ["Structural", "Mechanical", "Electrical", "Plumbing", "Finis
 const SEVERITIES = ["Critical", "Major", "Minor", "Observation"];
 const STATUSES   = ["Open", "In Progress", "Resolved", "Closed"];
 
+// ── Shared widget assets ──────────────────────────────────────────────────────
+// Read once at startup; injected into every widget HTML before serving.
+const sharedTheme  = fs.readFileSync(path.join(__dirname, "widgets", "shared", "theme.css"),  "utf-8");
+const sharedBridge = fs.readFileSync(path.join(__dirname, "widgets", "shared", "bridge.js"), "utf-8");
+
+function injectShared(html) {
+  return html
+    .replace("<!-- SHARED:CSS -->",    `<style>\n${sharedTheme}</style>`)
+    .replace("<!-- SHARED:BRIDGE -->", `<script>\n${sharedBridge}<\/script>`);
+}
+
 // ── Widget resource helper ────────────────────────────────────────────────────
-// Reads a widget HTML file from mcp/widgets/ and registers it as an App resource.
-// MIME type text/html;profile=mcp-app is set automatically by registerAppResource.
-// CSP connectDomains allows the widget to fetch from the REST API.
+// Reads a widget HTML file from mcp/widgets/, injects shared CSS/JS, and
+// registers it as an App resource. MIME type text/html;profile=mcp-app is set
+// automatically by registerAppResource. CSP connectDomains allows the widget
+// to fetch from the REST API.
 function widgetResource(name, uri, filename) {
   registerAppResource(
     server,
@@ -64,7 +76,7 @@ function widgetResource(name, uri, filename) {
     {},
     async (resourceUri) => {
       const filePath = path.join(__dirname, "widgets", filename);
-      const html = fs.readFileSync(filePath, "utf-8");
+      const html = injectShared(fs.readFileSync(filePath, "utf-8"));
       return {
         contents: [{
           uri: resourceUri.href,
@@ -785,7 +797,7 @@ const httpServer = http.createServer(async (req, res) => {
       res.end("Widget not found\n");
       return;
     }
-    const html = fs.readFileSync(filePath, "utf-8");
+    const html = injectShared(fs.readFileSync(filePath, "utf-8"));
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     res.end(html);
     return;
