@@ -4,34 +4,22 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Deficiencies — SiteCheck</title>
+  <!-- SHARED:CSS -->
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --surface: #2a2a2a;
-      --border: #3a3a3a;
-      --text: #e8e8e8;
-      --text-muted: #888;
       --header-bg: #252525;
       --row-hover: #303030;
     }
 
     @media (prefers-color-scheme: light) {
       :root {
-        --surface: #fff;
-        --border: #d0d0d0;
-        --text: #111;
-        --text-muted: #555;
         --header-bg: #f0f0f0;
         --row-hover: #f8f8f8;
       }
     }
 
     body {
-      font-family: inherit;
       font-size: 13px;
-      background: transparent;
-      color: var(--text);
       padding: 12px;
     }
 
@@ -253,25 +241,6 @@ function init(data) {
   render();
 }
 
-// ── Apps SDK bridge ───────────────────────────────────────────────────────────
-function rpcSend(method, params, id) {
-  const msg = { jsonrpc: "2.0", method, params: params ?? {} };
-  if (id !== undefined) msg.id = id;
-  window.parent.postMessage(msg, "*");
-}
-rpcSend("ui/initialize", {
-  appInfo: { name: "SiteCheck", version: "1.0.0" },
-  appCapabilities: {},
-  protocolVersion: "2026-01-26",
-}, "init");
-window.addEventListener("message", (event) => {
-  if (event.source !== window.parent) return;
-  const msg = event.data;
-  if (!msg || msg.jsonrpc !== "2.0") return;
-  if (msg.id === "init") rpcSend("ui/notifications/initialized");
-  if (msg.method === "ui/notifications/tool-result") init(msg.params?.structuredContent);
-});
-
 // ── Dev mode ──────────────────────────────────────────────────────────────────
 // Open with ?dev=1 to see the table with mock data
 const p = new URLSearchParams(location.search);
@@ -287,5 +256,7 @@ if (p.has("dev")) {
   });
 }
 </script>
+
+<!-- SHARED:BRIDGE -->
 </body>
 </html>

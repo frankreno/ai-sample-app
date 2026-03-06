@@ -4,35 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Log Deficiency — SiteCheck</title>
+  <!-- SHARED:CSS -->
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --surface: #2a2a2a;
-      --border: #3a3a3a;
-      --text: #e8e8e8;
-      --text-muted: #888;
-      --accent: #4a9eff;
       --accent-hover: #3a8eef;
       --danger: #ff4d4d;
-      --radius: 8px;
-    }
-
-    @media (prefers-color-scheme: light) {
-      :root {
-        --surface: #ffffff;
-        --border: #d0d0d0;
-        --text: #111;
-        --text-muted: #555;
-      }
-    }
-
-    body {
-      font-family: inherit;
-      font-size: 14px;
-      background: transparent;
-      color: var(--text);
-      padding: 16px;
     }
 
     h2 {
@@ -258,35 +234,6 @@
 let apiBase = "http://localhost:3000"; // overridden by init data
 let selectedSeverity = "";
 
-// ── MCP Apps UI Bridge ────────────────────────────────────────────────────────
-// Receives structured content from ChatGPT via postMessage, sends actions back.
-//
-// INCOMING (ChatGPT → widget):
-//   { type: "mcp:data", payload: { structuredContent: { ... } } }
-//   { type: "data",     data: { ... } }          ← alternative format
-//
-// OUTGOING (widget → ChatGPT):
-//   { type: "mcp:result", result: { ... } }
-//   { type: "mcp:cancel" }
-//
-// ⚠️ AMBIGUITY: The exact message format for the OpenAI Apps SDK bridge is not
-// fully documented. The incoming/outgoing types above are based on the PRD spec
-// and publicly available MCP information. Validate against the live SDK and
-// adjust the type strings if the widget doesn't receive data or ChatGPT doesn't
-// receive the result.
-
-function postToParent(payload) {
-  window.parent.postMessage(payload, "*");
-}
-
-function sendResult(data) {
-  postToParent({ type: "mcp:result", result: data });
-}
-
-function sendCancel() {
-  postToParent({ type: "mcp:cancel" });
-}
-
 // ── Initialize from data ──────────────────────────────────────────────────────
 function init(data) {
   const { prefill = {}, apiBase: base, categories = [], severities = [], projectName } = data;
@@ -442,27 +389,9 @@ function devModeInit() {
   });
 }
 
-// ── Apps SDK bridge ───────────────────────────────────────────────────────────
-function rpcSend(method, params, id) {
-  const msg = { jsonrpc: "2.0", method, params: params ?? {} };
-  if (id !== undefined) msg.id = id;
-  window.parent.postMessage(msg, "*");
-}
-rpcSend("ui/initialize", {
-  appInfo: { name: "SiteCheck", version: "1.0.0" },
-  appCapabilities: {},
-  protocolVersion: "2026-01-26",
-}, "init");
-window.addEventListener("message", (event) => {
-  if (event.source !== window.parent) return;
-  const msg = event.data;
-  if (!msg || msg.jsonrpc !== "2.0") return;
-  if (msg.id === "init") rpcSend("ui/notifications/initialized");
-  if (msg.method === "ui/notifications/tool-result") init(msg.params?.structuredContent);
-});
-
-// Dev mode runs on load; ChatGPT will send the message event after load
 devModeInit();
 </script>
+
+<!-- SHARED:BRIDGE -->
 </body>
 </html>
