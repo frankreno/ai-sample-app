@@ -143,7 +143,7 @@ registerAppTool(
   server,
   "show_projects",
   {
-    description: "Show an interactive project dashboard so the user can browse and select a project. Call this when the user says 'show projects', 'which projects', 'select a project', etc.",
+    description: "Show an interactive project dashboard so the user can browse and select a project. Call this when the user says 'show projects', 'which projects', 'select a project', etc. The embedded widget fully satisfies this request — do not restate project names, locations, or descriptions in text. Reply with one short sentence at most (e.g. 'Here are your projects.').",
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     _meta: { ui: { resourceUri: WIDGET_URIS.projectDashboard } },
   },
@@ -161,7 +161,11 @@ registerAppTool(
 
     const projects = json.data;
     return {
-      structuredContent: { projects },
+      structuredContent: {
+        projects,
+        ui_fulfills_request: true,
+        assistant_guidance: { preferred_response_style: "minimal", avoid_relisting_projects: true },
+      },
       content: [],
     };
   }
@@ -254,7 +258,7 @@ registerAppTool(
   server,
   "log_deficiency",
   {
-    description: "Extract deficiency details from the user's description and show a pre-filled form for review before saving. Call this when the user describes a site issue or deficiency.",
+    description: "Extract deficiency details from the user's description and show a pre-filled form for review before saving. Call this when the user describes a site issue or deficiency. The widget handles all input — do not narrate or list the form fields in text. After calling this tool, say nothing or at most one short sentence like 'Here's the form — review and submit when ready.'",
     inputSchema: {
       project_id: z.string().describe("ID of the active project"),
       title: z.string().describe("Short description of the deficiency, extracted from user's words"),
@@ -328,7 +332,7 @@ registerAppTool(
   server,
   "get_deficiency_list",
   {
-    description: "List deficiencies for the active project. Optionally filter by severity, status, or trade. Shows results in a table widget.",
+    description: "List deficiencies for the active project. Optionally filter by severity, status, or trade. Shows results in a table widget. The widget fully satisfies this request — do not restate deficiency IDs, titles, or details in text. Reply with one short sentence at most (e.g. 'Here are the open deficiencies.').",
     inputSchema: {
       project_id: z.string().describe("ID of the active project"),
       severity: z
@@ -376,6 +380,8 @@ registerAppTool(
         items,
         total,
         filters: { severity: args.severity, status: args.status, trade: args.trade },
+        ui_fulfills_request: true,
+        assistant_guidance: { preferred_response_style: "minimal", avoid_relisting_deficiencies: true },
       },
       content: [],
     };
@@ -390,7 +396,7 @@ registerAppTool(
   server,
   "set_severity",
   {
-    description: "Show a severity picker for a deficiency so the user can confirm or change it. Call this after log_deficiency or when the user mentions severity.",
+    description: "Show a severity picker for a deficiency so the user can confirm or change it. Call this after log_deficiency or when the user mentions severity. The widget handles user input — do not list severity options or describe the picker in text. Say nothing after calling this tool; wait for the user to interact with the widget.",
     inputSchema: {
       deficiency_id: z
         .string()
@@ -485,7 +491,7 @@ registerAppTool(
   server,
   "upload_photo",
   {
-    description: "Show a photo upload widget so the user can attach an image to a deficiency. Call this after log_deficiency when the user has a photo to attach.",
+    description: "Show a photo upload widget so the user can attach an image to a deficiency. Call this after log_deficiency when the user has a photo to attach. The widget handles the upload — do not describe the upload process in text. Say nothing after calling this tool; wait for the user to interact with the widget.",
     inputSchema: {
       deficiency_id: z
         .string()
@@ -530,7 +536,7 @@ registerAppTool(
   server,
   "get_summary_stats",
   {
-    description: "Show a summary dashboard of deficiency counts by severity and status for the active project.",
+    description: "Show a summary dashboard of deficiency counts by severity and status for the active project. The embedded widget fully satisfies this request — do not restate the counts in text. Reply with one short sentence at most (e.g. 'Here's the inspection summary.').",
     inputSchema: {
       project_id: z.string().describe("ID of the active project"),
     },
@@ -549,14 +555,14 @@ registerAppTool(
 
     const { total, by_severity, by_status } = json.data;
 
-    // Build a plain-text summary for the content field
-    const sevLines = Object.entries(by_severity)
-      .filter(([, n]) => n > 0)
-      .map(([s, n]) => `${s}: ${n}`)
-      .join(", ");
-
     return {
-      structuredContent: { total, by_severity, by_status },
+      structuredContent: {
+        total,
+        by_severity,
+        by_status,
+        ui_fulfills_request: true,
+        assistant_guidance: { preferred_response_style: "minimal", avoid_restating_counts: true },
+      },
       content: [],
     };
   }
@@ -570,7 +576,7 @@ registerAppTool(
   server,
   "generate_report",
   {
-    description: "Generate a PDF inspection report for the active project and provide a download link.",
+    description: "Generate a PDF inspection report for the active project and provide a download link. The widget shows the download button — do not paste the URL or filename in text. Reply with one short sentence at most (e.g. 'Your report is ready.').",
     inputSchema: {
       project_id: z.string().describe("ID of the project to generate the report for"),
     },
@@ -595,9 +601,10 @@ registerAppTool(
     return {
       structuredContent: {
         download_url,
-        // Widget builds the full clickable URL: apiBase + download_url
         apiBase: API_BASE,
         deficiency_count,
+        ui_fulfills_request: true,
+        assistant_guidance: { preferred_response_style: "minimal", avoid_pasting_url: true },
       },
       content: [],
     };
