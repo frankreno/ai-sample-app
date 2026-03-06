@@ -137,9 +137,10 @@ function renderBars(containerId, data, order) {
 }
 
 function init(data) {
-  document.getElementById("total").textContent = data.total ?? 0;
-  renderBars("severity-bars", data.by_severity ?? {}, SEVERITY_ORDER);
-  renderBars("status-bars",   data.by_status   ?? {}, STATUS_ORDER);
+  const safe = data && typeof data === "object" ? data : {};
+  document.getElementById("total").textContent = safe.total ?? 0;
+  renderBars("severity-bars", safe.by_severity ?? {}, SEVERITY_ORDER);
+  renderBars("status-bars",   safe.by_status   ?? {}, STATUS_ORDER);
 }
 
 // ── Dev mode ──────────────────────────────────────────────────────────────────

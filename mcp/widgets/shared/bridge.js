@@ -10,8 +10,7 @@
 //   JSON-RPC: { jsonrpc: "2.0", method: "ui/notifications/tool-result", params: { structuredContent } }
 //
 // OUTGOING (widget → ChatGPT, via postMessage):
-//   { type: "mcp:result", result: { ... } }   ← widget completed with data
-//   { type: "mcp:cancel" }                    ← user cancelled
+//   JSON-RPC request: method "ui/message" — so the host accepts it (no custom type/result).
 
 function rpcSend(method, params, id) {
   const msg = { jsonrpc: "2.0", method, params: params ?? {} };
@@ -19,17 +18,27 @@ function rpcSend(method, params, id) {
   window.parent.postMessage(msg, "*");
 }
 
-function postToParent(payload) {
-  window.parent.postMessage(payload, "*");
+let _rpcId = 0;
+function nextId() {
+  return "sitecheck-" + (++_rpcId) + "-" + Date.now();
 }
 
 function sendResult(data) {
-  postToParent({ type: "mcp:result", result: data });
+  rpcSend("ui/message", {
+    role: "user",
+    content: [{ type: "text", text: JSON.stringify(data) }],
+  }, nextId());
 }
 
 function sendCancel() {
-  postToParent({ type: "mcp:cancel" });
+  rpcSend("ui/message", {
+    role: "user",
+    content: [{ type: "text", text: "User cancelled." }],
+  }, nextId());
 }
+
+window.sendResult = sendResult;
+window.sendCancel = sendCancel;
 
 rpcSend("ui/initialize", {
   appInfo: { name: "SiteCheck", version: "1.0.0" },
@@ -37,10 +46,23 @@ rpcSend("ui/initialize", {
   protocolVersion: "2026-01-26",
 }, "init");
 
+let _toolInput = {};
+let _initCalled = false;
+
 window.addEventListener("message", (event) => {
   if (event.source !== window.parent) return;
   const msg = event.data;
   if (!msg || msg.jsonrpc !== "2.0") return;
+
   if (msg.id === "init") rpcSend("ui/notifications/initialized");
-  if (msg.method === "ui/notifications/tool-result") init(msg.params?.structuredContent);
+
+  if (msg.method === "ui/notifications/tool-input") {
+    _toolInput = msg.params?.arguments ?? {};
+  }
+
+  if (msg.method === "ui/notifications/tool-result") {
+    _initCalled = true;
+    const sc = msg.params?.structuredContent ?? {};
+    init({ ..._toolInput, ...sc });
+  }
 });

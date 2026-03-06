@@ -66,20 +66,21 @@
 
 <script>
 function init(data) {
-  const { download_url, apiBase, deficiency_count } = data;
+  const safe = data && typeof data === "object" ? data : {};
+  const download_url = safe.download_url ?? "";
+  const apiBase = safe.apiBase ?? "http://localhost:3000";
 
   // Build full URL — download_url is a relative path like /reports/filename.pdf
-  const base = (apiBase ?? "http://localhost:3000").replace(/\/$/, "");
-  const fullUrl = base + download_url;
+  const base = String(apiBase).replace(/\/$/, "");
+  const fullUrl = download_url ? base + download_url : "#";
 
   document.getElementById("meta").textContent =
-    `${deficiency_count ?? 0} deficiencie(s) included`;
+    `${safe.deficiency_count ?? 0} deficiencie(s) included`;
 
   const btn = document.getElementById("download-btn");
   btn.href = fullUrl;
 
-  // Show just the filename part
-  const filename = download_url.split("/").pop() ?? download_url;
+  const filename = download_url ? download_url.split("/").pop() : "";
   document.getElementById("filename").textContent = filename;
 }
 

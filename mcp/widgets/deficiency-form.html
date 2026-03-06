@@ -236,7 +236,8 @@ let selectedSeverity = "";
 
 // ── Initialize from data ──────────────────────────────────────────────────────
 function init(data) {
-  const { prefill = {}, apiBase: base, categories = [], severities = [], projectName } = data;
+  const d = data && typeof data === "object" ? data : {};
+  const { prefill = {}, apiBase: base, categories = [], severities = [], projectName } = d;
 
   if (base) apiBase = base;
 
@@ -261,7 +262,8 @@ function init(data) {
 
   // Category dropdown
   const catSelect = document.getElementById("category");
-  for (const cat of categories) {
+  const catList = Array.isArray(categories) ? categories : [];
+  for (const cat of catList) {
     const opt = document.createElement("option");
     opt.value = cat;
     opt.textContent = cat;
@@ -271,7 +273,8 @@ function init(data) {
 
   // Severity buttons
   const group = document.getElementById("severity-group");
-  for (const sev of severities) {
+  const sevList = Array.isArray(severities) ? severities : [];
+  for (const sev of sevList) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "severity-btn";
@@ -349,7 +352,7 @@ document.getElementById("form").addEventListener("submit", async (e) => {
 });
 
 document.getElementById("cancel-btn").addEventListener("click", () => {
-  sendCancel();
+  if (typeof window.sendCancel === "function") window.sendCancel();
 });
 
 function showError(msg) {

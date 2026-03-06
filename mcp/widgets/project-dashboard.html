@@ -96,7 +96,7 @@ function render(projects) {
 
 // Bridge calls init(structuredContent); extract projects and delegate to render
 function init(data) {
-  render(data?.projects);
+  render(data && Array.isArray(data.projects) ? data.projects : []);
 }
 
 // ── Dev mode ──────────────────────────────────────────────────────────────────

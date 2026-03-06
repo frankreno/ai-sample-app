@@ -134,7 +134,6 @@ server.registerTool(
       .join("\n");
 
     return {
-      structuredContent: { projects },
       content: [
         {
           type: "text",
@@ -184,16 +183,20 @@ registerAppTool(
 );
 
 // ── Tool: search_projects ─────────────────────────────────────────────────────
-// Searches projects by name or location. Use when the user mentions a project
-// by partial name and set_project returns too many or ambiguous results.
-server.registerTool(
+// Searches projects by name or location. Uses the same project-dashboard widget
+// as show_projects so ChatGPT always has a valid resourceUri when rendering
+// (avoids React "unexpected nullish value: undefined" when the host looks up
+// the widget URL). Call when the user mentions a project by partial name.
+registerAppTool(
+  server,
   "search_projects",
   {
-    description: "Search SiteCheck projects by name or location. Use when you need to resolve an ambiguous project name to a specific project ID.",
+    description: "Search SiteCheck projects by name or location. Use when the user asks to see or select projects matching a name (e.g. 'Maple Street'). Shows results in the project dashboard widget.",
     inputSchema: {
       q: z.string().describe("Search query — matched against project name and location"),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    _meta: { ui: { resourceUri: WIDGET_URIS.projectDashboard } },
   },
   async (args) => {
     let json;
@@ -205,21 +208,14 @@ server.registerTool(
 
     if (!json.success) return apiError(`API error: ${json.error}`);
 
-    const projects = json.data;
-    const summary = projects
-      .map((p) => `• ${p.name} (id: ${p.id}) — ${p.location ?? ""}`.trim())
-      .join("\n");
-
+    const projects = Array.isArray(json.data) ? json.data : [];
     return {
-      structuredContent: { projects },
-      content: [
-        {
-          type: "text",
-          text: projects.length === 0
-            ? `No projects found matching "${args.q}".`
-            : `${projects.length} match(es):\n${summary}`,
-        },
-      ],
+      structuredContent: {
+        projects,
+        ui_fulfills_request: true,
+        assistant_guidance: { preferred_response_style: "minimal", avoid_relisting_projects: true },
+      },
+      content: [],
     };
   }
 );
@@ -246,12 +242,18 @@ server.registerTool(
 
     if (!json.success) return apiError(`Deficiency not found: ${args.deficiency_id}`);
 
+    const d = json.data;
     return {
-      structuredContent: { deficiency: json.data },
       content: [
         {
           type: "text",
-          text: `${json.data.id}: ${json.data.title} — ${json.data.severity} / ${json.data.status}`,
+          text: [
+            `${d.id}: ${d.title}`,
+            `Severity: ${d.severity} | Status: ${d.status} | Category: ${d.category}`,
+            d.location ? `Location: ${d.location}` : null,
+            d.trade ? `Trade: ${d.trade}` : null,
+            d.description ? `Description: ${d.description}` : null,
+          ].filter(Boolean).join("\n"),
         },
       ],
     };
@@ -484,7 +486,6 @@ server.registerTool(
 
     const deficiency = json.data;
     return {
-      structuredContent: { deficiency },
       content: [
         {
           type: "text",

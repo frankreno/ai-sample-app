@@ -190,19 +190,20 @@ let apiBase      = "http://localhost:3000";
 let deficiencyId = "";
 let selectedFile = null;
 
-function sendSkip() { postToParent({ type: "mcp:result", result: { skipped: true } }); }
+function sendSkip() { if (typeof window.sendResult === "function") window.sendResult({ skipped: true }); }
 
 // ── Initialize ────────────────────────────────────────────────────────────────
 function init(data) {
-  apiBase      = data.apiBase ?? apiBase;
-  deficiencyId = data.deficiency_id ?? "";
+  const safe = data && typeof data === "object" ? data : {};
+  apiBase      = safe.apiBase ?? apiBase;
+  deficiencyId = safe.deficiency_id ?? "";
 
-  const label = `${deficiencyId}${data.deficiencyTitle ? ": " + data.deficiencyTitle : ""}`;
+  const label = `${deficiencyId}${safe.deficiencyTitle ? ": " + safe.deficiencyTitle : ""}`;
   document.getElementById("def-id").textContent = label;
 
-  if (data.existingCount > 0) {
+  if (safe.existingCount > 0) {
     document.querySelector(".drop-hint").textContent =
-      `${data.existingCount} photo(s) already attached · JPEG, PNG, WebP or GIF · max 10 MB`;
+      `${safe.existingCount} photo(s) already attached · JPEG, PNG, WebP or GIF · max 10 MB`;
   }
 }
 
@@ -257,7 +258,8 @@ document.getElementById("remove-btn").addEventListener("click", () => {
 
 // ── Upload ────────────────────────────────────────────────────────────────────
 document.getElementById("upload-btn").addEventListener("click", async () => {
-  if (!selectedFile || !deficiencyId) return;
+  if (!selectedFile) { showError("Select a photo first."); return; }
+  if (!deficiencyId) { showError("No deficiency ID — try again or go back."); return; }
 
   const uploadBtn  = document.getElementById("upload-btn");
   const progressEl = document.getElementById("progress");

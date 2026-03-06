@@ -221,14 +221,15 @@ document.querySelectorAll("th[data-col]").forEach((th) => {
 
 // ── Initialize from data ──────────────────────────────────────────────────────
 function init(data) {
-  allItems = data.items ?? [];
+  const safe = data && typeof data === "object" ? data : {};
+  allItems = Array.isArray(safe.items) ? safe.items : [];
 
   document.getElementById("count").textContent =
-    `${data.total ?? allItems.length} deficiency(ies)`;
+    `${safe.total ?? allItems.length} deficiency(ies)`;
 
   const pillsEl = document.getElementById("filter-pills");
   pillsEl.innerHTML = "";
-  const { severity, status, trade } = data.filters ?? {};
+  const { severity, status, trade } = safe.filters ?? {};
   for (const [label, val] of [["Severity", severity], ["Status", status], ["Trade", trade]]) {
     if (val) {
       const pill = document.createElement("span");
