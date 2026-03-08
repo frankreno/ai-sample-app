@@ -3,9 +3,9 @@
 A construction site inspection tracker built as a two-phase prototype demonstrating how SaaS products connect to AI conversational platforms.
 
 **Phase 1:** Standalone Next.js web app with a REST API backed by SQLite.
-**Phase 2:** ChatGPT integration via OpenAI Apps SDK + MCP server, calling the same REST API.
+**Phase 2:** MCP server with platform adapter architecture — ChatGPT widgets (OpenAI mode) or plain text (generic mode), calling the same REST API.
 
-The analogy is OpenTable — users can log inspections via the web app *or* through ChatGPT. Same database, two interfaces.
+The analogy is OpenTable — users can log inspections via the web app *or* through an AI assistant. Same database, multiple interfaces.
 
 ---
 
@@ -13,10 +13,16 @@ The analogy is OpenTable — users can log inspections via the web app *or* thro
 
 ```
 [React Frontend]  →  [REST API]  →  [SQLite DB]
-[MCP Server]      →  [REST API]  →  [SQLite DB]
+
+                     ┌─────────────────┐
+[MCP Client]  →  /mcp  →  [Adapter]  →  [Core Handlers]  →  [REST API]  →  [SQLite DB]
+                     │  openai.js      │
+                     │  generic.js     │
+                     │  (future...)    │
+                     └─────────────────┘
 ```
 
-The MCP server is a thin wrapper — all business logic lives in the REST API. A deficiency created via ChatGPT appears immediately in the web app, and vice versa.
+The MCP server uses a **platform adapter pattern** — core tool handlers are shared, and the adapter controls registration and response format. All business logic lives in the REST API. A deficiency created via ChatGPT (or any MCP client) appears immediately in the web app, and vice versa.
 
 ---
 
@@ -32,27 +38,41 @@ No Docker, no external services, no API keys required.
 
 ---
 
-## Quick Start — Phase 2 (ChatGPT Integration)
+## Quick Start — Phase 2 (MCP Server)
 
-Requires the web app running on port 3000 and ngrok installed.
+Requires the web app running on port 3000.
+
+### Option A: OpenAI mode (ChatGPT with widgets)
 
 ```bash
 # Terminal 1 — Next.js REST API
 npm run dev
 
-# Terminal 2 — MCP server
+# Terminal 2 — MCP server (OpenAI mode, default)
 npm run mcp     # http://localhost:8787
 
 # Terminal 3 — expose MCP server publicly
 ngrok http 8787
 ```
 
-### Register in ChatGPT
+**Register in ChatGPT:**
 
 1. Go to **chatgpt.com** → profile → **Settings → Apps**
 2. Click **Add app** → paste `<ngrok-url>/mcp`
 3. Complete the OAuth flow (auto-approves in dev)
 4. In a new chat, click **"+"** near the input to add SiteCheck to the conversation
+
+### Option B: Generic mode (any MCP client)
+
+```bash
+# Terminal 1 — Next.js REST API
+npm run dev
+
+# Terminal 2 — MCP server (generic mode, text-only)
+npm run mcp:generic   # http://localhost:8787
+```
+
+Connect any MCP client to `http://localhost:8787/mcp`. No ngrok or OAuth needed for local clients. All tools return plain text responses.
 
 ### Test prompts
 
@@ -114,19 +134,21 @@ All responses use a consistent envelope:
 
 ## MCP Tools
 
-The MCP server exposes these tools to ChatGPT:
+The MCP server exposes 11 tools. In OpenAI mode, tools with widgets render interactive UIs inside ChatGPT. In generic mode, all tools return plain text.
 
-| Tool | Widget | Description |
-|---|---|---|
-| `set_project` | — | Silent project lookup (resolves name → ID) |
-| `show_projects` | project-dashboard | Browse all projects |
-| `log_deficiency` | deficiency-form | Pre-filled form to log a new deficiency |
-| `get_deficiency_list` | deficiency-table | List/filter deficiencies |
-| `get_summary_stats` | stats-dashboard | Counts by severity and status |
-| `set_severity` | severity-picker | Pick/confirm severity for a deficiency |
-| `update_status` | — | Directly patch status (no UI needed) |
-| `upload_photo` | photo-upload | Attach a photo to a deficiency |
-| `generate_report` | report-download | Generate PDF + download link |
+| Tool | Widget (OpenAI) | Generic behavior | Description |
+|---|---|---|---|
+| `set_project` | — | Same | Silent project lookup (resolves name → ID) |
+| `show_projects` | project-dashboard | Text list | Browse all projects |
+| `search_projects` | project-dashboard | Text list | Search projects by name/location |
+| `get_deficiency` | — | Same | Fetch details for a single deficiency |
+| `log_deficiency` | deficiency-form | Creates directly | Pre-filled form to log a new deficiency |
+| `get_deficiency_list` | deficiency-table | Text list | List/filter deficiencies |
+| `set_severity` | severity-picker | Patches directly | Pick/confirm severity for a deficiency |
+| `update_status` | — | Same | Directly patch status (no UI needed) |
+| `upload_photo` | photo-upload | Explains limitation | Attach a photo to a deficiency |
+| `get_summary_stats` | stats-dashboard | Text breakdown | Counts by severity and status |
+| `generate_report` | report-download | Text URL | Generate PDF + download link |
 
 ---
 
@@ -155,15 +177,18 @@ The MCP server exposes these tools to ChatGPT:
 │   ├── api.ts                    # Response helpers + enum constants
 │   └── db.ts                     # SQLite singleton
 ├── mcp/
-│   ├── server.js                 # MCP server (thin wrapper over REST API)
-│   └── widgets/                  # Embedded UI HTML files
-│       ├── project-dashboard.html
-│       ├── deficiency-form.html
-│       ├── deficiency-table.html
-│       ├── severity-picker.html
-│       ├── photo-upload.html
-│       ├── stats-dashboard.html
-│       └── report-download.html
+│   ├── server.js                 # Entry point — HTTP, OAuth, adapter selection
+│   ├── core/
+│   │   ├── api-client.js         # Shared REST API client + enum constants
+│   │   └── tools.js              # Platform-neutral tool definitions
+│   ├── adapters/
+│   │   ├── openai.js             # OpenAI ext-apps adapter (widgets)
+│   │   └── generic.js            # Generic MCP adapter (text-only)
+│   ├── widgets/                  # Embedded UI HTML files (OpenAI mode)
+│   │   ├── shared/bridge.js      # Widget ↔ ChatGPT bridge
+│   │   ├── shared/theme.css      # Shared widget styles
+│   │   └── *.html                # 7 widget files
+│   └── __tests__/                # Vitest test suites (74 tests)
 ├── middleware.ts                 # CORS headers for API routes
 ├── public/
 │   ├── uploads/                  # Photo uploads
@@ -182,6 +207,7 @@ The MCP server exposes these tools to ChatGPT:
 | Database | SQLite via `better-sqlite3` |
 | PDF generation | `pdfkit` |
 | MCP server | `@modelcontextprotocol/sdk` + `@modelcontextprotocol/ext-apps` |
+| Testing | Vitest |
 | Language | TypeScript |
 
 ---
