@@ -3,12 +3,18 @@
  *
  * Each tool is a plain object with:
  *   - name, description, inputSchema (zod), annotations
+ *   - descriptionGeneric – optional; used by the generic adapter when present. Instructs the LLM
+ *                          to summarize or interpret the tool result. If absent, generic adapter uses description.
  *   - widget        – { uri, file } if the tool has a UI widget, null otherwise
  *   - handler(args) – calls the REST API; returns { data } or { error }
  *   - directHandler – optional override for non-widget platforms (e.g. log_deficiency
  *                     creates the deficiency directly instead of returning a pre-fill form)
  *   - formatText(result)       – human-readable text for generic MCP clients
  *   - formatStructured(result) – structuredContent payload for widget-capable platforms
+ *
+ * description is used by the OpenAI adapter (widget-oriented: minimal reply, don't restate).
+ * The generic adapter uses descriptionGeneric ?? description so text-only clients get guidance
+ * to summarize/interpret the returned data.
  *
  * The adapters (openai.js, generic.js) decide which handler and formatter to use.
  */
@@ -74,6 +80,8 @@ export const tools = [
     name: "show_projects",
     description:
       "Show an interactive project dashboard so the user can browse and select a project. Call this when the user says 'show projects', 'which projects', 'select a project', etc. The embedded widget fully satisfies this request — do not restate project names, locations, or descriptions in text. Reply with one short sentence at most (e.g. 'Here are your projects.').",
+    descriptionGeneric:
+      "List SiteCheck projects so the user can browse or select one. Call when the user says 'show projects', 'which projects', 'select a project', etc. The tool returns the project list; summarize or highlight the options for the user.",
     inputSchema: {},
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     widget: { uri: WIDGET_URIS.projectDashboard, file: "project-dashboard.html" },
@@ -105,6 +113,8 @@ export const tools = [
     name: "search_projects",
     description:
       "Search SiteCheck projects by name or location. Use when the user asks to see or select projects matching a name (e.g. 'Maple Street'). Shows results in the project dashboard widget.",
+    descriptionGeneric:
+      "Search SiteCheck projects by name or location. Use when the user asks to see or select projects matching a name (e.g. 'Maple Street'). Results are returned as data; present or summarize them for the user.",
     inputSchema: {
       q: z.string().describe("Search query — matched against project name and location"),
     },
@@ -169,6 +179,8 @@ export const tools = [
     name: "log_deficiency",
     description:
       "Extract deficiency details from the user's description and show a pre-filled form for review before saving. Call this when the user describes a site issue or deficiency. The widget handles all input — do not narrate or list the form fields in text. After calling this tool, say nothing or at most one short sentence like 'Here's the form — review and submit when ready.'",
+    descriptionGeneric:
+      "Create a new deficiency from the user's description of a site issue. Call when the user describes something to log. The tool creates the deficiency and returns its details; confirm what was created and suggest next steps (e.g. set severity, add a photo) as appropriate.",
     inputSchema: {
       project_id: z.string().describe("ID of the active project"),
       title: z.string().describe("Short description of the deficiency, extracted from user's words"),
@@ -270,6 +282,8 @@ export const tools = [
     name: "get_deficiency_list",
     description:
       "List deficiencies for the active project. Optionally filter by severity, status, or trade. Shows results in a table widget. The widget fully satisfies this request — do not restate deficiency IDs, titles, or details in text. Reply with one short sentence at most (e.g. 'Here are the open deficiencies.').",
+    descriptionGeneric:
+      "List deficiencies for the active project. Optionally filter by severity, status, or trade. The tool returns the list; summarize it for the user (e.g. counts, highlights) and interpret as needed.",
     inputSchema: {
       project_id: z.string().describe("ID of the active project"),
       severity: z.enum(["Critical", "Major", "Minor", "Observation"]).optional().describe("Filter by severity level"),
@@ -280,6 +294,9 @@ export const tools = [
     widget: { uri: WIDGET_URIS.deficiencyTable, file: "deficiency-table.html" },
 
     handler: async (args) => {
+      if (!args.project_id || typeof args.project_id !== "string") {
+        return { error: "project_id is required. Call show_projects or set_project first to get a project ID." };
+      }
       const params = new URLSearchParams({ project_id: args.project_id });
       if (args.severity) params.set("severity", args.severity);
       if (args.status)   params.set("status",   args.status);
@@ -330,6 +347,8 @@ export const tools = [
     name: "set_severity",
     description:
       "Show a severity picker for a deficiency so the user can confirm or change it. Call this after log_deficiency or when the user mentions severity. The widget handles user input — do not list severity options or describe the picker in text. Say nothing after calling this tool; wait for the user to interact with the widget.",
+    descriptionGeneric:
+      "Set or prompt for the severity of a deficiency. Call after log_deficiency or when the user mentions severity. If severity is provided, the tool updates it; otherwise it returns current severity and options. Confirm the update or ask the user to choose a severity as appropriate.",
     inputSchema: {
       deficiency_id: z.string().describe("ID of the deficiency to update, e.g. DEF-001"),
       severity: z.enum(["Critical", "Major", "Minor", "Observation"]).optional()
@@ -446,6 +465,8 @@ export const tools = [
     name: "upload_photo",
     description:
       "Show a photo upload widget so the user can attach an image to a deficiency. Call this after log_deficiency when the user has a photo to attach. The widget handles the upload — do not describe the upload process in text. Say nothing after calling this tool; wait for the user to interact with the widget.",
+    descriptionGeneric:
+      "Attach a photo to a deficiency. In this mode photo upload is not available; the tool returns instructions for using the web app. Explain the limitation and point the user to the web app to attach photos.",
     inputSchema: {
       deficiency_id: z.string().describe("ID of the deficiency to attach the photo to, e.g. DEF-001"),
     },
@@ -513,6 +534,8 @@ export const tools = [
     name: "get_summary_stats",
     description:
       "Show a summary dashboard of deficiency counts by severity and status for the active project. The embedded widget fully satisfies this request — do not restate the counts in text. Reply with one short sentence at most (e.g. 'Here's the inspection summary.').",
+    descriptionGeneric:
+      "Get a summary of deficiency counts by severity and status for the active project. The tool returns the breakdown; summarize and interpret the stats for the user.",
     inputSchema: {
       project_id: z.string().describe("ID of the active project"),
     },
@@ -552,6 +575,8 @@ export const tools = [
     name: "generate_report",
     description:
       "Generate a PDF inspection report for the active project and provide a download link. The widget shows the download button — do not paste the URL or filename in text. Reply with one short sentence at most (e.g. 'Your report is ready.').",
+    descriptionGeneric:
+      "Generate a PDF inspection report for the active project. The tool returns a download URL and deficiency count; you may present the link and briefly describe the report.",
     inputSchema: {
       project_id: z.string().describe("ID of the project to generate the report for"),
     },

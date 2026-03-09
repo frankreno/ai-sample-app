@@ -27,7 +27,7 @@ export function register(server, tools) {
     server.registerTool(
       tool.name,
       {
-        description: tool.description,
+        description: tool.descriptionGeneric ?? tool.description,
         ...(Object.keys(tool.inputSchema).length > 0 ? { inputSchema: tool.inputSchema } : {}),
         annotations: tool.annotations,
       },

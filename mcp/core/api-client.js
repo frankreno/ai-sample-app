@@ -11,16 +11,31 @@ export const CATEGORIES = ["Structural", "Mechanical", "Electrical", "Plumbing",
 export const SEVERITIES = ["Critical", "Major", "Minor", "Observation"];
 export const STATUSES   = ["Open", "In Progress", "Resolved", "Closed"];
 
+/** Request timeout in ms so the MCP server responds before clients (e.g. Claude proxy) time out. */
+const API_TIMEOUT_MS = 25_000;
+
 /**
  * Fetch JSON from the REST API. Returns { status, json }.
- * Throws on network errors — callers should catch and surface via apiError().
+ * Throws on network errors or timeout — callers should catch and surface via apiError().
  */
 export async function api(path, options = {}) {
+  const signal = options.signal ?? AbortSignal.timeout(API_TIMEOUT_MS);
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
     ...options,
+    signal,
   });
-  const json = await res.json();
+  let json;
+  if (typeof res.text === "function") {
+    const text = await res.text();
+    try {
+      json = text ? JSON.parse(text) : {};
+    } catch {
+      throw new Error(`API returned non-JSON (${res.status}): ${text.slice(0, 200)}`);
+    }
+  } else {
+    json = typeof res.json === "function" ? await res.json() : {};
+  }
   return { status: res.status, json };
 }
 
