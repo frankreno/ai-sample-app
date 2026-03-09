@@ -118,14 +118,14 @@ The MCP server uses a layered architecture with swappable platform adapters:
 [REST API]               All business logic lives here
 ```
 
-Set `MCP_PLATFORM` to choose the adapter:
+Both adapters run simultaneously on the same server — the URL path determines which one handles a request:
 
-| Value | Adapter | Response format | Widgets? |
+| Endpoint | Adapter | Response format | Widgets? |
 |---|---|---|---|
-| `openai` (default) | `adapters/openai.js` | `structuredContent` + widget HTML | Yes |
-| `generic` | `adapters/generic.js` | Plain text `content` | No |
+| `/mcp` (default) | `adapters/generic.js` | Plain text `content` | No |
+| `/mcp/openai` | `adapters/openai.js` | `structuredContent` + widget HTML | Yes |
 
-**Adding a new platform** only requires a new adapter file — no changes to core tools or existing adapters.
+**Adding a new platform** only requires a new adapter file and a new URL path — no changes to core tools or existing adapters.
 
 ### MCP Tool Definitions (`mcp/core/tools.js`)
 
@@ -240,22 +240,22 @@ npm run setup      # Initialize SQLite + seed 3 projects, 8 deficiencies
 npm run dev        # Next.js on http://localhost:3000
 ```
 
-### Phase 2 — MCP Server (OpenAI mode, default)
+### Phase 2 — MCP Server
+
+Both platform modes run simultaneously on one server:
 
 ```bash
-npm run mcp        # MCP server on http://localhost:8787 (OpenAI widgets)
-ngrok http 8787    # Expose via public HTTPS URL
+npm run mcp        # http://localhost:8787 — both endpoints active
 ```
 
-Then in ChatGPT: **Settings → Apps → Developer Mode → Add App** → paste `<ngrok-url>/mcp`
+| Endpoint | Mode | Use with |
+|---|---|---|
+| `http://localhost:8787/mcp` | Generic (text-only) | Any MCP client |
+| `http://localhost:8787/mcp/openai` | OpenAI (widgets) | ChatGPT |
 
-### Phase 2 — MCP Server (Generic mode)
+For ChatGPT: `ngrok http 8787` → **Settings → Apps → Add App** → paste `<ngrok-url>/mcp/openai`
 
-```bash
-npm run mcp:generic   # MCP server on http://localhost:8787 (text-only)
-```
-
-Connect any MCP client to `http://localhost:8787/mcp`. No ngrok or OAuth needed for local clients.
+For any other MCP client: connect to `http://localhost:8787/mcp` directly.
 
 ### Running Tests
 
@@ -274,7 +274,7 @@ See `.env.example` for the template. Copy to `.env` before running.
 |---|---|---|
 | `DATABASE_URL` | Path to SQLite file, e.g. `./db/sitecheck.db` | Yes |
 | `API_BASE_URL` | Internal base URL for REST API, e.g. `http://localhost:3000` | Phase 2 |
-| `MCP_PLATFORM` | Platform adapter: `openai` (default) or `generic` | Phase 2 |
+| `MCP_PORT` | Port for the MCP server (default: `8787`) | Phase 2 |
 | `NEXTAUTH_SECRET` | Session secret (if auth is added) | Planned |
 
 Add all new variables to `.env.example` with placeholder values. Never hardcode secrets in source.
