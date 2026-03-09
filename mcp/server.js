@@ -5,12 +5,9 @@
  * the Next.js API routes at localhost:3000. This server only translates
  * MCP tool calls into REST API requests.
  *
- * Platform adapters control how tools are registered and what response
- * format is used:
- *   - "openai"  → ext-apps widgets + structuredContent (for ChatGPT)
- *   - "generic" → plain MCP text content (for any MCP client)
- *
- * Set MCP_PLATFORM env var to choose. Default: "openai".
+ * Both platform modes run simultaneously on the same server:
+ *   /mcp         → generic (text-only, works with any MCP client)
+ *   /mcp/openai  → OpenAI ext-apps (widgets + structuredContent for ChatGPT)
  *
  * Transport: Streamable HTTP (stateless) on port 8787
  */
@@ -22,28 +19,21 @@ import path from "node:path";
 
 import { tools } from "./core/tools.js";
 
-const PORT     = process.env.MCP_PORT ?? 8787;
-const PLATFORM = process.env.MCP_PLATFORM ?? "openai";
+const PORT = process.env.MCP_PORT ?? 8787;
 
-// ── MCP Server ────────────────────────────────────────────────────────────────
-const server = new McpServer({
-  name: "sitecheck-ai",
-  version: "1.0.0",
-});
+// ── Create one McpServer per platform adapter ─────────────────────────────────
+// Both are always available — the URL path determines which one handles a request.
 
-// ── Load platform adapter and register tools ─────────────────────────────────
-let serveWidget = null;
+const genericServer = new McpServer({ name: "sitecheck-ai", version: "1.0.0" });
+const openaiServer  = new McpServer({ name: "sitecheck-ai", version: "1.0.0" });
 
-if (PLATFORM === "openai") {
-  const adapter = await import("./adapters/openai.js");
-  adapter.register(server, tools);
-  serveWidget = adapter.serveWidget;
-} else {
-  const adapter = await import("./adapters/generic.js");
-  adapter.register(server, tools);
-}
+const genericAdapter = await import("./adapters/generic.js");
+genericAdapter.register(genericServer, tools);
 
-console.log(`   Platform     : ${PLATFORM}`);
+const openaiAdapter = await import("./adapters/openai.js");
+openaiAdapter.register(openaiServer, tools);
+
+const serveWidget = openaiAdapter.serveWidget;
 
 // ── Body readers ──────────────────────────────────────────────────────────────
 function readBody(req) {
@@ -90,6 +80,20 @@ function json(res, status, body) {
     "Access-Control-Allow-Origin": "*",
   });
   res.end(JSON.stringify(body));
+}
+
+/**
+ * Handle an MCP request by connecting the appropriate server to a fresh
+ * stateless transport and processing the request.
+ */
+async function handleMcp(server, req, res) {
+  const body = await readBody(req);
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: undefined,
+  });
+  res.on("close", () => transport.close());
+  await server.connect(transport);
+  await transport.handleRequest(req, res, body);
 }
 
 // ── HTTP server ───────────────────────────────────────────────────────────────
@@ -176,20 +180,22 @@ const httpServer = http.createServer(async (req, res) => {
     return;
   }
 
-  // ── MCP endpoint ────────────────────────────────────────────────────────────
-  if (req.url === "/mcp") {
-    const body = await readBody(req);
-    const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: undefined,
-    });
-    res.on("close", () => transport.close());
-    await server.connect(transport);
-    await transport.handleRequest(req, res, body);
+  // ── MCP endpoints ───────────────────────────────────────────────────────────
+  // /mcp/openai  → OpenAI adapter (widgets + structuredContent)
+  // /mcp         → Generic adapter (text-only, default)
+
+  if (req.url === "/mcp/openai") {
+    await handleMcp(openaiServer, req, res);
     return;
   }
 
-  // ── Widget dev server (OpenAI mode only) ────────────────────────────────────
-  if (req.method === "GET" && req.url?.startsWith("/widgets/") && serveWidget) {
+  if (req.url === "/mcp") {
+    await handleMcp(genericServer, req, res);
+    return;
+  }
+
+  // ── Widget dev server ───────────────────────────────────────────────────────
+  if (req.method === "GET" && req.url?.startsWith("/widgets/")) {
     const filename = path.basename(req.url.split("?")[0]);
     const html = serveWidget(filename);
     if (!html) {
@@ -210,15 +216,13 @@ const API_BASE = process.env.API_BASE_URL ?? "http://localhost:3000";
 
 httpServer.listen(PORT, () => {
   console.log(`\n✅ SiteCheck MCP server running`);
-  console.log(`   MCP endpoint : http://localhost:${PORT}/mcp`);
-  console.log(`   Platform     : ${PLATFORM}`);
-  console.log(`   OAuth disco  : http://localhost:${PORT}/.well-known/oauth-authorization-server`);
-  console.log(`   Health check : http://localhost:${PORT}/health`);
-  console.log(`   REST API base: ${API_BASE}`);
-  if (PLATFORM === "openai") {
-    console.log(`\n   For ChatGPT: ngrok http ${PORT}  →  register <ngrok-url>/mcp`);
-  } else {
-    console.log(`\n   Generic MCP mode — connect any MCP client to http://localhost:${PORT}/mcp`);
-  }
+  console.log(`   MCP (generic) : http://localhost:${PORT}/mcp`);
+  console.log(`   MCP (OpenAI)  : http://localhost:${PORT}/mcp/openai`);
+  console.log(`   OAuth disco   : http://localhost:${PORT}/.well-known/oauth-authorization-server`);
+  console.log(`   Health check  : http://localhost:${PORT}/health`);
+  console.log(`   Widget dev    : http://localhost:${PORT}/widgets/`);
+  console.log(`   REST API base : ${API_BASE}`);
+  console.log(`\n   For ChatGPT: ngrok http ${PORT}  →  register <ngrok-url>/mcp/openai`);
+  console.log(`   For others : connect MCP client to http://localhost:${PORT}/mcp`);
   console.log();
 });

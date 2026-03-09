@@ -40,39 +40,36 @@ No Docker, no external services, no API keys required.
 
 ## Quick Start — Phase 2 (MCP Server)
 
-Requires the web app running on port 3000.
+Requires the web app running on port 3000. One server, two endpoints — both modes run simultaneously:
 
-### Option A: OpenAI mode (ChatGPT with widgets)
+| Endpoint | Mode | Response format | Use with |
+|---|---|---|---|
+| `/mcp` | Generic (default) | Plain text | Any MCP client |
+| `/mcp/openai` | OpenAI | Widgets + structuredContent | ChatGPT |
 
 ```bash
 # Terminal 1 — Next.js REST API
 npm run dev
 
-# Terminal 2 — MCP server (OpenAI mode, default)
+# Terminal 2 — MCP server (both modes on one server)
 npm run mcp     # http://localhost:8787
+```
 
+### Connect ChatGPT (OpenAI mode)
+
+```bash
 # Terminal 3 — expose MCP server publicly
 ngrok http 8787
 ```
 
-**Register in ChatGPT:**
-
 1. Go to **chatgpt.com** → profile → **Settings → Apps**
-2. Click **Add app** → paste `<ngrok-url>/mcp`
+2. Click **Add app** → paste `<ngrok-url>/mcp/openai`
 3. Complete the OAuth flow (auto-approves in dev)
 4. In a new chat, click **"+"** near the input to add SiteCheck to the conversation
 
-### Option B: Generic mode (any MCP client)
+### Connect any other MCP client (generic mode)
 
-```bash
-# Terminal 1 — Next.js REST API
-npm run dev
-
-# Terminal 2 — MCP server (generic mode, text-only)
-npm run mcp:generic   # http://localhost:8787
-```
-
-Connect any MCP client to `http://localhost:8787/mcp`. No ngrok or OAuth needed for local clients. All tools return plain text responses.
+Point your MCP client to `http://localhost:8787/mcp`. No ngrok or OAuth needed for local clients. All tools return plain text responses.
 
 ### Test prompts
 

@@ -10,7 +10,6 @@
     "typecheck": "tsc --noEmit",
     "setup": "npx tsx db/setup.ts",
     "mcp": "node mcp/server.js",
-    "mcp:generic": "MCP_PLATFORM=generic node mcp/server.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },
