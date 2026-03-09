@@ -21,19 +21,15 @@ import { tools } from "./core/tools.js";
 
 const PORT = process.env.MCP_PORT ?? 8787;
 
-// ── Create one McpServer per platform adapter ─────────────────────────────────
-// Both are always available — the URL path determines which one handles a request.
-
-const genericServer = new McpServer({ name: "sitecheck-ai", version: "1.0.0" });
-const openaiServer  = new McpServer({ name: "sitecheck-ai", version: "1.0.0" });
+// ── Load adapters once; create one McpServer per request ───────────────────────
+// Claude (and other clients) often send tools/call and tools/list concurrently.
+// Sharing a single server would connect it to multiple transports and drop one
+// response, causing "Request timed out" / "Server disconnected". So we create
+// a fresh server per request (stateless).
 
 const genericAdapter = await import("./adapters/generic.js");
-genericAdapter.register(genericServer, tools);
-
-const openaiAdapter = await import("./adapters/openai.js");
-openaiAdapter.register(openaiServer, tools);
-
-const serveWidget = openaiAdapter.serveWidget;
+const openaiAdapter  = await import("./adapters/openai.js");
+const serveWidget    = openaiAdapter.serveWidget;
 
 // ── Body readers ──────────────────────────────────────────────────────────────
 function readBody(req) {
@@ -183,14 +179,21 @@ const httpServer = http.createServer(async (req, res) => {
   // ── MCP endpoints ───────────────────────────────────────────────────────────
   // /mcp/openai  → OpenAI adapter (widgets + structuredContent)
   // /mcp         → Generic adapter (text-only, default)
+  // Only POST is valid; GET (e.g. browser) returns 405 to avoid 502 behind proxies.
 
-  if (req.url === "/mcp/openai") {
-    await handleMcp(openaiServer, req, res);
-    return;
-  }
-
-  if (req.url === "/mcp") {
-    await handleMcp(genericServer, req, res);
+  if (req.url === "/mcp/openai" || req.url === "/mcp") {
+    if (req.method !== "POST") {
+      res.writeHead(405, { "Content-Type": "application/json", "Allow": "POST" });
+      res.end(JSON.stringify({ error: "Method Not Allowed", message: "MCP endpoint accepts POST only. Use an MCP client or proxy (e.g. uvx mcp-proxy)." }));
+      return;
+    }
+    const server = new McpServer({ name: "sitecheck-ai", version: "1.0.0" });
+    if (req.url === "/mcp/openai") {
+      openaiAdapter.register(server, tools);
+    } else {
+      genericAdapter.register(server, tools);
+    }
+    await handleMcp(server, req, res);
     return;
   }
 

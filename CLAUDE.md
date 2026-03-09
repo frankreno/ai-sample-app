@@ -135,6 +135,8 @@ Each tool is a plain object with platform-neutral handler logic:
 - `formatText(result)` — human-readable text for generic MCP clients
 - `formatStructured(result)` — structured payload for widget-capable platforms
 - `widget` — `{ uri, file }` if the tool has a UI widget, `null` otherwise
+- `description` — used by the OpenAI adapter (widget-oriented: minimal reply, don't restate). Required.
+- `descriptionGeneric` — optional; used by the generic adapter when present. Instructs the LLM to summarize or interpret the tool result; if absent, generic adapter uses `description`.
 
 The adapters decide which handler and formatter to use. Tool handlers must **not** contain platform-specific logic.
 
@@ -314,7 +316,7 @@ Add all new variables to `.env.example` with placeholder values. Never hardcode 
 
 ### Adding a New MCP Tool
 
-1. **Tool definition:** Add a new object to the `tools` array in `mcp/core/tools.js` with `name`, `description`, `inputSchema` (zod), `annotations`, `handler(args)`, `formatText(result)`, and optionally `widget`, `directHandler`, `formatStructured`
+1. **Tool definition:** Add a new object to the `tools` array in `mcp/core/tools.js` with `name`, `description`, `inputSchema` (zod), `annotations`, `handler(args)`, `formatText(result)`, and optionally `widget`, `directHandler`, `formatStructured`, `descriptionGeneric`. For tools with widget-specific LLM instructions (e.g. "do not restate"), add `descriptionGeneric` so generic MCP clients are instructed to summarize or interpret the tool result.
 2. **Widget (if needed):** Create `mcp/widgets/<name>.html` with `<!-- SHARED:CSS -->` and `<!-- SHARED:BRIDGE -->` placeholders, and an `init(data)` function
 3. **Set `widget`** to `{ uri: "ui://sitecheck/<name>.html", file: "<name>.html" }` — the OpenAI adapter auto-registers the resource
 4. **directHandler:** If the tool is interactive (widget does the mutation), add a `directHandler` that performs the action directly for generic mode

@@ -71,6 +71,82 @@ ngrok http 8787
 
 Point your MCP client to `http://localhost:8787/mcp`. No ngrok or OAuth needed for local clients. All tools return plain text responses.
 
+### Connect Claude Desktop (generic and/or MCP Apps)
+
+Claude Desktop only supports **stdio** MCP servers. This app exposes **Streamable HTTP**, so you need a small proxy that speaks stdio to Claude and HTTP to this server.
+
+**Prerequisites**
+
+- App and MCP server running (`npm run dev` and `npm run mcp`)
+- [uv](https://docs.astral.sh/uv/) (install: `curl -LsSf https://astral.sh/uv/install.sh | sh`). Then `uvx mcp-proxy` works (uv fetches the Python proxy on first use). Alternatively: Python 3.10+ with `pip install mcp-proxy`.
+
+**Option A — Generic MCP (text-only)**
+
+Claude gets the same tools with plain-text responses; it will summarize and interpret the data.
+
+1. Open Claude Desktop → **Settings** → **Developer** → **Edit Config**
+2. Add a proxy entry that forwards stdio to `http://localhost:8787/mcp`:
+
+```json
+{
+  "mcpServers": {
+    "sitecheck": {
+      "command": "/Users/YOUR_USERNAME/.local/bin/uvx",
+      "args": [
+        "mcp-proxy",
+        "--transport",
+        "streamablehttp",
+        "http://localhost:8787/mcp"
+      ]
+    }
+  }
+}
+```
+
+**Important:** Use the **full path** to `uvx` (e.g. `/Users/frankreno/.local/bin/uvx`). Do not use just `uvx` — Claude Desktop does not inherit your shell PATH, so you get "Failed to spawn process: No such file or directory" if the command is not fully qualified. Replace `YOUR_USERNAME` with your macOS username, or run `which uvx` in a terminal (after `source ~/.local/bin/env`) and paste that path.
+
+3. Save, then **fully quit and restart** Claude Desktop (not just the window).
+4. Start a new chat; Claude can use SiteCheck tools and will respond with summarized text.
+
+**Option B — MCP Apps (widgets, like ChatGPT)**
+
+Claude supports the same [MCP Apps (ext-apps)](https://claude.com/docs/connectors/building/mcp-apps/getting-started) protocol as ChatGPT. Use the **OpenAI** endpoint so Claude gets widgets (dashboards, forms, tables) inline.
+
+1. In the same config, add a second server (or replace `sitecheck` with this):
+
+```json
+{
+  "mcpServers": {
+    "sitecheck-apps": {
+      "command": "/Users/YOUR_USERNAME/.local/bin/uvx",
+      "args": [
+        "mcp-proxy",
+        "--transport",
+        "streamablehttp",
+        "http://localhost:8787/mcp/openai"
+      ]
+    }
+  }
+}
+```
+
+2. Save and fully restart Claude Desktop.
+3. In a new chat, Claude may prompt to allow the App; choose **Always allow** to see widgets.
+4. Use the same kinds of prompts as in the test table below (e.g. “Show my SiteCheck projects”, “Show deficiencies for Maple Street”).
+
+You can have both entries (e.g. `sitecheck` for generic and `sitecheck-apps` for widgets) or only one. For widgets, only the `sitecheck-apps` entry is needed.
+
+**Config file locations**
+
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+- **Linux:** `~/.config/Claude/claude_desktop_config.json`
+
+**Troubleshooting**
+
+- **"Failed to spawn process: No such file or directory"** — Use the **full path** to `uvx` (e.g. `/Users/YourName/.local/bin/uvx`), not just `uvx`.
+- **"Request timed out" / "Server disconnected without sending a response"** — The MCP server calls the REST API at `localhost:3000`. If the Next.js app is not running or is slow, tool calls can hang. **Keep `npm run dev` running** in a separate terminal. The server will give up after 25 seconds and return an error instead of hanging; if you still hit timeouts, check that http://localhost:3000 loads and that the app is not stuck.
+
 ### Test prompts
 
 | Prompt | Widget rendered |

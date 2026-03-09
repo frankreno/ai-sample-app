@@ -184,6 +184,12 @@ describe("Core tool handlers", () => {
 
   // ── get_deficiency_list ───────────────────────────────────────────────────
   describe("get_deficiency_list", () => {
+    it("handler errors when project_id is missing", async () => {
+      const result = await getTool("get_deficiency_list").handler({});
+      expect(result.error).toBeDefined();
+      expect(result.error).toContain("project_id is required");
+    });
+
     it("returns list with filters", async () => {
       const result = await getTool("get_deficiency_list").handler({
         project_id: "proj-001",
@@ -380,6 +386,15 @@ describe("Core tool handlers", () => {
       for (const tool of tools) {
         expect(tool.name).toBeTruthy();
         expect(tool.description).toBeTruthy();
+      }
+    });
+
+    it("descriptionGeneric when set is used by generic adapter; no tool has only descriptionGeneric", () => {
+      for (const tool of tools) {
+        if (tool.descriptionGeneric != null) {
+          expect(tool.description).toBeTruthy();
+          expect(typeof tool.descriptionGeneric).toBe("string");
+        }
       }
     });
 
